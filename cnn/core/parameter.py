@@ -1,0 +1,20 @@
+import numpy as np
+from cnn.core import Tensor
+
+
+class Parameter(Tensor):
+    '''
+    Parameter 类继承自 Tensor，用于标识需要训练的可学习参数。
+    相比普通 Tensor，Parameter 默认 requires_grad=True，并可以通过 Module.parameters() 自动收集。
+    '''
+
+    def __init__(self, shape: int | tuple):
+        '''
+        初始化 Parameter，默认初始化为全零张量。
+
+        Parameters:
+            shape: 数据的形状，可以是整数或元组。
+        '''
+        # 调用父类 Tensor 的初始化方法，传入全零数据和 requires_grad=True
+        data = np.zeros(shape=shape)
+        super().__init__(data, True)

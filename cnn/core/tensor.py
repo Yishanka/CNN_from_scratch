@@ -1,25 +1,29 @@
 import numpy as np
 
 class Tensor:
+    '''
+    Tensor 类，用于表示多维数组，并支持自动求导。
+    '''
     def __init__(self, data, requires_grad:bool=False, _children=(), _op:str=''):
         '''
-        Args:
+        Parameters:
             data: 数据，转换为 numpy 数组
             requires_grad: 是否需要计算梯度，默认 False
             _children: 子节点，用于构建计算图，默认空元组
             _op: 操作符，用于标识该 Tensor 是如何生成的，默认空字符串
         '''
-        self.data = np.array(data, dtype=np.float32)
-        self.requires_grad = requires_grad
-        self._children = set(_children)
-        self._op = _op
-        self.grad = np.zeros_like(self.data) if requires_grad else None
-        def _backward():
-            pass
-        self._backward = _backward # 反向传播的梯度计算函数，基于链式法则确定
+        self.data = np.array(data, dtype=np.float32) # 将数据转换为 numpy 数组
+        self.requires_grad = requires_grad  # 是否需要计算梯度
+        self._children = set(_children)  # 子节点集合
+        self._op = _op  # 操作符
+        self.grad = np.zeros_like(self.data) if requires_grad else None  # 梯度初始化为零
+        self._backward = lambda: None  # 反向传播的梯度计算函数，默认为空
     
-    # 重载加法运算符 R^n*m -> R^n*m
+    def __repr__(self):
+        return f"{self.data}"
+    
     def __add__(self, other):
+        '''重载加法运算符，支持两个 Tensor: m*n 相加，返回 Tensor: m*n。'''
         other = other if isinstance(other, Tensor) else Tensor(other)
         out = Tensor(
             self.data + other.data, 
@@ -36,8 +40,8 @@ class Tensor:
         out._backward = _backward
         return out
     
-    # 重载乘法运算符 R^n*m -> R^n*m
     def __mul__(self, other):
+        '''重载乘法运算符，支持两个 Tensor: m*n 逐元素相乘，返回 Tensor: m*n。'''
         other = other if isinstance(other, Tensor) else Tensor(other)
         out = Tensor(
             self.data * other.data, 
@@ -54,8 +58,8 @@ class Tensor:
         out._backward = _backward 
         return out
 
-    # 张量元素求和 R^n*m -> R
     def sum(self):
+        '''对 Tensor 的所有元素求和，返回标量 Tensor。'''
         out = Tensor(self.data.sum(), requires_grad=self.requires_grad, _children=(self,), _op='sum')  # 创建新的 Tensor，表示求和结果
         def _backward():
             # ∂f(Σx)/∂x=∂f(Σx)/∂(Σx)*∂(Σx)/∂x=∂f(Σx)/∂(Σx)
@@ -64,8 +68,8 @@ class Tensor:
         out._backward = _backward  # 将反向传播函数绑定到输出 Tensor
         return out  # 返回求和结果
 
-    # 转置 R^n*m -> R^m*n
     def T(self):  
+        '''对 Tensor: m*n 进行转置操作，返回 Tensor: n*m。'''
         out = Tensor(self.data.T, requires_grad=self.requires_grad, _children=(self,), _op='T')
         def _backward():
             if self.requires_grad:
@@ -73,8 +77,8 @@ class Tensor:
         out._backward = _backward
         return out
     
-    # 矩阵乘法 R^n*m, R^m*p -> R^n*p
     def __matmul__(self, other):
+        '''重载矩阵乘法运算符，支持 Tensor: m*n 和 Tensor: n*p 进行矩阵乘法，返回 Tensor: m*p。'''
         other = other if isinstance(other, Tensor) else Tensor(other)
         out = Tensor(self.data @ other.data, requires_grad=self.requires_grad or other.requires_grad, _children=(self, other), _op='matmul')
         def _backward():
@@ -86,8 +90,8 @@ class Tensor:
         out._backward = _backward
         return out
     
-    # relu 激活函数, R^n*m -> R^n*m
     def relu(self):
+        '''对 Tensor 应用 ReLU 激活函数。'''
         out = Tensor(np.maximum(0, self.data), requires_grad=self.requires_grad, _children=(self,), _op='relu')
         def _backward():
             if self.requires_grad:
@@ -95,23 +99,25 @@ class Tensor:
         out._backward = _backward
         return out
     
-    # 反向传播接口，从此处开始，逐节点计算梯度
     def backward(self):
-        assert self.data.size == 1, "只能对标量调用 backward" # 从最终的张量开始求导，最终张量必须是标量
-        self.grad = np.ones_like(self.data) # 对自己的导数为1
-        topo, visited = [], set() # 类中的容器
+        ''' 反向传播接口，计算梯度。要求当前 Tensor 为标量。 '''
+        assert self.data.size == 1, "只能对标量调用 backward"
+        self.grad = np.ones_like(self.data) # 对自己的导数为1，作为链式法则的起点
+        topo, visited = [], set() # 拓扑排序的容器
+        # 递归构建拓扑排序
         def build_topo(t: Tensor):
+            ''''''
             if t not in visited:
                 visited.add(t)
                 for child in t._children:
                     build_topo(child)
                 topo.append(t)
-        build_topo(self) # 从起点开始拓扑排序，建立反向传播的节点顺序
+        build_topo(self)  # 从当前节点开始构建拓扑排序，建立反向传播的节点顺序
         for node in reversed(topo):
             node._backward()
 
-    # 梯度清零
     def zero_grad(self):
+        '''将梯度清零。'''
         if self.requires_grad:
             self.grad = np.zeros_like(self.data)
 
