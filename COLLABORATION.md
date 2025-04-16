@@ -39,7 +39,7 @@
 
 | 模块 | 负责人 | 状态 | 计划完成日期 |
 |------|--------|------|------------|
-| layer/conv2d.py | @username | 待认领 | - |
+| layer/conv2d.py | @username | 待认领 | 4月16日 |
 | optimizer/adam.py | - | 待认领 | - |
 | loss/crossentropyloss.py | - | 待认领 | - |
 | layer/batchnorm.py | - | 待认领 | - |
