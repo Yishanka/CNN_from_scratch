@@ -39,20 +39,11 @@
 
 | 模块 | 负责人 | 状态 | 计划完成日期 |
 |------|--------|------|------------|
-| core/tensor.py | @username | 已完成 | 2025-04-01 |
-| data/ | @username | 已完成 | 2025-04-16 |
-| layer/conv2d.py | @username | 进行中 | 2025-04-30 |
+| layer/conv2d.py | @username | 待认领 | - |
 | optimizer/adam.py | - | 待认领 | - |
 | loss/crossentropyloss.py | - | 待认领 | - |
 | layer/batchnorm.py | - | 待认领 | - |
 | layer/pooling.py | - | 待认领 | - |
-
-## 📅 近期目标
-
-1. 完成 Conv2d 层实现
-2. 实现 Adam 优化器
-3. 完成 CrossEntropyLoss 损失函数
-4. 构建一个完整的 CNN 分类模型示例
 
 ---
 
