@@ -1,1 +1,1 @@
-from cnn.core import Tensor
+from cnn.model import Model

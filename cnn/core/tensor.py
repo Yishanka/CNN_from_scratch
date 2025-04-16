@@ -98,28 +98,16 @@ class Tensor:
                 self.grad += (self.data > 0) * out.grad
         out._backward = _backward
         return out
-    
-    def backward(self):
-        ''' 反向传播接口，计算梯度。要求当前 Tensor 为标量。 '''
-        assert self.data.size == 1, "只能对标量调用 backward"
-        self.grad = np.ones_like(self.data) # 对自己的导数为1，作为链式法则的起点
-        topo, visited = [], set() # 拓扑排序的容器
-        # 递归构建拓扑排序
-        def build_topo(t: Tensor):
-            ''''''
-            if t not in visited:
-                visited.add(t)
-                for child in t._children:
-                    build_topo(child)
-                topo.append(t)
-        build_topo(self)  # 从当前节点开始构建拓扑排序，建立反向传播的节点顺序
-        for node in reversed(topo):
-            node._backward()
 
     def zero_grad(self):
         '''将梯度清零。'''
         if self.requires_grad:
             self.grad = np.zeros_like(self.data)
+
+    def one_grad(self):
+        '''将梯度设为 1 '''
+        if self.requires_grad:
+            self.grad = np.ones_like(self.data)
 
 if __name__ == '__main__':
     tensor_a = Tensor([[1,2,2],[1,2,2]], requires_grad=True)

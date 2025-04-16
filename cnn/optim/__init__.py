@@ -1,1 +1,1 @@
-from adam import Adam
+from cnn.optim.adam import Adam
