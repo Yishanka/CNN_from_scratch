@@ -4,8 +4,7 @@ from cnn.core import Tensor
 
 class Parameter(Tensor):
     '''
-    Parameter 类继承自 Tensor，用于标识需要训练的可学习参数。
-    相比普通 Tensor，Parameter 默认 requires_grad=True，并可以通过 Module.parameters() 自动收集。
+    Parameter 类继承自 Tensor，用于标识需要训练的可学习参数。默认 requires_grad=True。
     '''
 
     def __init__(self, shape: int | tuple):

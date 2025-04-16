@@ -2,7 +2,7 @@ from cnn.core import Tensor
 
 class Loss:
     def __call__(self, pred, true):
-        """ 调用时直接执行 forward，保存 loss: Tensor 实例 """
+        ''' 调用时直接执行 forward，保存 loss: Tensor 实例 '''
         self.loss = self.forward(pred, true)
         return self.loss
 
@@ -10,7 +10,7 @@ class Loss:
         raise NotImplementedError("forward 方法未实现")
 
     def backward(self, retain_graph=False):
-        """ 基于保存的 self.loss 进行反向传播 """
+        ''' 基于保存的 self.loss 进行反向传播 '''
         assert isinstance(self.loss, Tensor), "loss 尚未计算，不能反向传播"
         assert self.loss.data.size == 1, "只能对标量调用 backward"
 

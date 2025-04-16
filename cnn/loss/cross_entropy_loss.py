@@ -1,4 +1,4 @@
-from cnn.core import Tensor
+from cnn.core import Tensor, Parameter
 from cnn.base.loss import Loss
 
 class CrossEntropyLoss(Loss):

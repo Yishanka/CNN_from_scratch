@@ -1,5 +1,5 @@
-from cnn.base.layer import Layer
 from cnn.core import Parameter, Tensor
+from cnn.base.layer import Layer
 
 class Linear(Layer):
     def __init__(self, in_features: int, out_features: int):

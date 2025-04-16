@@ -8,5 +8,5 @@ class Optimizer:
         """ 调用时直接执行 step """
         self.step(params)
 
-    def step(self, params: Parameter) -> Tensor:
+    def step(self, params: Parameter)->Tensor:
         raise NotImplementedError("step 方法未实现")
