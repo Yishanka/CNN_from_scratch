@@ -15,7 +15,3 @@ class Conv2d:
 
     def forward(self, x:Tensor):
         pass
-
-
-if __name__ == '__main__':
-    pass

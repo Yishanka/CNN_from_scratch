@@ -18,6 +18,8 @@ class Parameter(Tensor):
         data = np.zeros(shape=shape)
         super().__init__(data, True)
 
+    def __repr__(self):
+        return super().__repr__()
         
     def xavier_uniform(self):
         a = np.sqrt(6.0 / sum(self.data.shape))

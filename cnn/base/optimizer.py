@@ -1,7 +1,7 @@
 from cnn.core import Tensor, Parameter
 
 class Optimizer:
-    def __init__(self, lr):
+    def __init__(self, lr=0.01):
         self.lr = lr
 
     def __call__(self, params: Parameter):
