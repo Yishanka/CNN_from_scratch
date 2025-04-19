@@ -10,6 +10,6 @@ class CrossEntropyLoss(Loss):
         batch_size = true.shape[0]
         log_prob = pred.log()
         # 选出每个样本的正确类的 log prob
-        correct_log_prob = log_prob[range(batch_size), true._data]
+        correct_log_prob = log_prob[range(batch_size), true]
         loss = -correct_log_prob.sum() / batch_size
         return loss

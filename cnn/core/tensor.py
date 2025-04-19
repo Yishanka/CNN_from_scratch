@@ -12,7 +12,7 @@ class Tensor:
             _children: 子节点，用于构建计算图，默认空元组
             _op: 操作符，用于标识该 Tensor 是如何生成的，默认空字符串
         '''
-        self._data = np.array(data, dtype=np.float32) # 将数据转换为 numpy 数组
+        self._data = np.array(data) # 将数据转换为 numpy 数组
         self._grad = np.zeros_like(self._data) if requires_grad else None  # 梯度初始化为零
         self._children = set(_children)  # 子节点集合
         self._op = _op  # 操作符
@@ -23,7 +23,7 @@ class Tensor:
 
     @property
     def T(self):  
-        '''对 Tensor: m*n 进行转置操作，返回 Tensor: n*m。'''
+        '''对 Tensor，shape: m*n 进行转置操作，返回 Tensor，shape: n*m。'''
         out = Tensor(self._data.T, requires_grad=self.requires_grad, _children=(self,), _op='T')
         def _backward():
             if self.requires_grad:
@@ -32,9 +32,16 @@ class Tensor:
         return out
     
     def __repr__(self):
-        return f"data：{self._data}\ngrad: {self._grad}"
+        # 格式化输出
+        data_str = f"{self._data:.3f}" if np.isscalar(self._data) else np.array2string(self._data, precision=3, separator=', ')
+        grad_str = f"{self._grad:.3f}" if np.isscalar(self._grad) else np.array2string(self._grad, precision=3, separator=', ')
+        return f"data:\n{data_str}\ngrad:\n{grad_str}"
     
     def __getitem__(self, idx):
+        if isinstance(idx, tuple):
+            idx = tuple(i._data if isinstance(i, Tensor) else i for i in idx)
+        elif isinstance(idx, Tensor):
+            idx = idx._data  # 单个 Tensor 索引
         out = Tensor(self._data[idx], requires_grad=self.requires_grad, _children=(self,), _op='getitem')
 
         def _backward():
@@ -47,7 +54,7 @@ class Tensor:
         return out
     
     def __add__(self, other):
-        '''重载加法运算符，支持两个 Tensor: m*n 相加，返回 Tensor: m*n。'''
+        '''重载加法运算符，支持两个 Tensor，shape: m*n 相加，返回 Tensor，shape: m*n。'''
         other = other if isinstance(other, Tensor) else Tensor(other)
         out = Tensor(
             self._data + other._data, 
@@ -55,6 +62,7 @@ class Tensor:
             _children=(self, other), 
             _op='+'
         )
+
         def _backward():
             # ∂f(x+y)/∂x=∂f(x+y)/∂(x+y)*∂(x+y)/∂x=∂f(x+y)/∂(x+y)
             if self.requires_grad:
@@ -62,10 +70,12 @@ class Tensor:
             if other.requires_grad:
                 other._grad += out._grad
         out._backward = _backward
+
         return out
 
     def __radd__(self, other):
-        return self.__add__(other)
+        '''重载加法运算符，支持两个 Tensor，shape: m*n 相加，返回 Tensor，shape: m*n。'''
+        return self + other
     
     def __neg__(self):
         out = Tensor(
@@ -74,19 +84,24 @@ class Tensor:
             _children=(self,), 
             _op='neg'
         )
+
         def _backward():
             # ∂f(-x)/∂x=∂f(-x)/∂(-x)*∂(-x)/∂x=-∂f(x+y)/∂(x+y)
             if self.requires_grad:
                 self._grad += -out._grad
         out._backward = _backward
+
         return out
     
     def __sub__(self, other):
         other = other if isinstance(other, Tensor) else Tensor(other)
-        return self.__add__(-other)
+        return self + (-other)
+    
+    def __rsub__(self, other):
+        return (-self) + other
     
     def __mul__(self, other):
-        '''重载乘法运算符，支持两个 Tensor: m*n 逐元素相乘，返回 Tensor: m*n。'''
+        '''重载乘法运算符，支持两个 Tensor，shape: m*n 逐元素相乘，返回 Tensor，shape: m*n。'''
         other = other if isinstance(other, Tensor) else Tensor(other)
         out = Tensor(
             self._data * other._data, 
@@ -106,12 +121,34 @@ class Tensor:
     def __rmul__(self, other):
         return self.__mul__(other)
     
+    def __truediv__(self, other):
+        '''重载除法运算符，支持两个 Tensor，shape: m*n 逐元素相除，返回 Tensor, shape: m*n。'''
+        other = other if isinstance(other, Tensor) else Tensor(other)
+        out = Tensor(
+            self._data / other._data,
+            requires_grad=self.requires_grad or other.requires_grad,
+            _children=(self, other),
+            _op='/'
+        )
+
+        def _backward():
+            if self.requires_grad:
+                self._grad += (1 / other._data) * out._grad
+            if other.requires_grad:
+                other._grad += (-self._data / (other._data ** 2)) * out._grad
+        out._backward = _backward
+        return out
+    
+    def __rtruediv__(self, other):
+        other = other if isinstance(other, Tensor) else Tensor(other)
+        return other / self  # 反转调用
+
     def __matmul__(self, other):
-        '''重载矩阵乘法运算符，支持 Tensor: m*n 和 Tensor: n*p 进行矩阵乘法，返回 Tensor: m*p。'''
+        '''重载矩阵乘法运算符，支持 Tensor，shape: m*n 和 Tensor，shape: n*p 进行矩阵乘法，返回 Tensor，shape: m*p。'''
         other = other if isinstance(other, Tensor) else Tensor(other)
         out = Tensor(self._data @ other._data, requires_grad=self.requires_grad or other.requires_grad, _children=(self, other), _op='matmul')
         def _backward():
-            # ∂f(XY)/∂X=∂f(XY)/∂(XY)@∂(XY)/∂X=∂f(XY)/∂(XY)@Y.T
+            # ∂f(X/Y)/∂X=∂f(XY)/∂(XY)@∂(XY)/∂X=∂f(XY)/∂(XY)@Y.T
             if self.requires_grad:
                 self._grad += out._grad @ other._data.T
             if other.requires_grad:
@@ -135,7 +172,7 @@ class Tensor:
         return out  # 返回求和结果
     
     def maximum(self, other):
-        '''求出两个张量之间的最大值，广播机制基于 numpy 规则'''
+        '''求出两个 Tensor 之间的最大值'''
         other = other if isinstance(other, Tensor) else Tensor(other)
         out = Tensor(np.maximum(self._data, other._data), requires_grad=self.requires_grad or other.requires_grad, _children=(self, other), _op='maximum')
 
@@ -149,7 +186,7 @@ class Tensor:
         return out
 
     def max(self, axis=None, keepdims=False):
-        '''求出某个张量的最大值'''
+        '''求出 Tensor 按某一维度的最大值'''
         out = Tensor(self._data.max(axis=axis, keepdims=keepdims), requires_grad=self.requires_grad, _children = (self,), _op = 'max')
 
         def _backward():
@@ -171,10 +208,10 @@ class Tensor:
         return out
     
     def log(self):
-        out = Tensor(np.log(self._data + 1e-8), requires_grad=self.requires_grad, _children=(self,), _op='log')  # 防止 log(0)
+        out = Tensor(np.log(self._data + 1e-10), requires_grad=self.requires_grad, _children=(self,), _op='log')  # 防止 log(0)
 
         def _backward():
-            self._grad += (1 / (self._data + 1e-8)) * out._grad
+            self._grad += (1 / (self._data + 1e-10)) * out._grad
         out._backward = _backward
 
         return out
