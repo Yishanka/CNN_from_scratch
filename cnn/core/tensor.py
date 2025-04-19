@@ -32,7 +32,7 @@ class Tensor:
         return out
     
     def __repr__(self):
-        return f"data：{self._data} '\n' grad: {self._grad}"
+        return f"data：{self._data}\ngrad: {self._grad}"
     
     def __getitem__(self, idx):
         out = Tensor(self._data[idx], requires_grad=self.requires_grad, _children=(self,), _op='getitem')
@@ -121,15 +121,17 @@ class Tensor:
     
     def sum(self, axis=None, keepdims=False):
         '''对 Tensor 的所有元素求和，返回标量 Tensor。'''
-        out = Tensor(self._data.sum(axis=None, keepdims=False), requires_grad=self.requires_grad, _children=(self,), _op='sum')  # 创建新的 Tensor，表示求和结果
+        out = Tensor(self._data.sum(axis=axis, keepdims=keepdims), requires_grad=self.requires_grad, _children=(self,), _op='sum')  # 创建新的 Tensor，表示求和结果
+        
         def _backward():
             # ∂f(Σx)/∂x=∂f(Σx)/∂(Σx)*∂(Σx)/∂x=∂f(Σx)/∂(Σx)
             if self.requires_grad:
-                grad = out.grad
-                if not keepdims:
+                grad = out._grad
+                if not keepdims and axis:
                     grad = np.expand_dims(grad, axis)
-                self._grad += np.ones_like(self.data) * grad
+                self._grad += np.ones_like(self._data) * grad
         out._backward = _backward  # 将反向传播函数绑定到输出 Tensor
+        
         return out  # 返回求和结果
     
     def maximum(self, other):
