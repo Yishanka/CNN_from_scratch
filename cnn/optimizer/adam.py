@@ -1,12 +1,28 @@
-from cnn.core import Tensor, Parameter
+from cnn.core import Parameter, tensor
 from cnn.base import Optimizer
 
 class Adam(Optimizer):
-    def __init__(self, lr):
-        super().__init__(lr)
+    def __init__(self, lr=0.001, beta1=0.9, beta2 = 0.999, eps=1e-8):
+        super().__init__()
+        self._lr = lr
+        self._beta1 = beta1
+        self._beta2 = beta2
+        self._eps = eps
+        self._t = 0
+        self.m = {}  # 一阶矩估计
+        self.v = {}  # 二阶矩估计
     
-    def step(self, params:Parameter)->Tensor:
-        pass
+    def _step(self, params: list[Parameter]):
+        self.t += 1
+        for i, param in enumerate(params):
+            if i not in self.m:
+                self.m[i] = tensor.zeros_like(param)
+                self.v[i] = tensor.zeros_like(param)
 
-if __name__ == '__main__':
-    pass
+            self.m[i] = self._beta1 * self.m[i] + (1 - self._beta1) * param.grad
+            self.v[i] = self._beta2 * self.v[i] + (1 - self._beta2) * (param.grad ** 2)
+
+            m_hat = self.m[i] / (1 - self._beta1 ** self.t)
+            v_hat = self.v[i] / (1 - self._beta2 ** self.t)
+
+            param = param - self._lr * m_hat / (tensor.sqrt(v_hat) + self._eps)

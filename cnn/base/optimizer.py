@@ -1,9 +1,9 @@
 from cnn.core import Tensor, Parameter
 
 class Optimizer:
-    def __init__(self, lr=0.001):
-        self._lr = lr
-        
+    def __init__(self):
+        pass
+    
     def __call__(self, params: list[Parameter]):
         '''
         标准梯度下降接口
@@ -20,6 +20,6 @@ class Optimizer:
         '''
         return self._step(params)
 
-    def _step(self, params):
+    def _step(self, params: list[Parameter]):
         '''梯度下降的抽象函数，需在派生类里实现'''
         raise NotImplementedError("step 方法未实现")

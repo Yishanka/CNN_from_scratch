@@ -1,9 +1,10 @@
-from cnn.core import Tensor
-
+from cnn.core import Tensor, Parameter
 class Loss:
-    def __init__(self):
+    def __init__(self, lambda1=0, lambda2=0):
         self._loss: Tensor = None
-        
+        self._lambda1 = lambda1
+        self._lambda2 = lambda2
+
     def __repr__(self):
         return self._loss
     
@@ -18,7 +19,7 @@ class Loss:
         '''
         return self.forward(pred, true)
     
-    def forward(self, pred, true) -> Tensor:
+    def forward(self, pred, true, params:list[Parameter]) -> Tensor:
         '''
         非标准损失计算接口
         Parameters:
@@ -27,8 +28,12 @@ class Loss:
         Returns:
             Tensor: 预测值和真实值的损失
         '''
-        self._loss = self._forward(pred, true)
-        return self._loss
+        loss = self._forward(pred, true)
+        # 加上正则项
+        l2 = sum([(param ** 2).sum() for param in params])
+        l1 = sum([param.abs().sum() for param in params])
+        self._loss = loss + self._lambda1 * l1 + self._lambda2 * l2
+        return loss
     
     def backward(self, retain_graph=False):
         '''
@@ -41,5 +46,5 @@ class Loss:
         self._loss.backward(retain_graph)
 
     def _forward(self, pred, true) -> Tensor:
-        '''损失计算的抽象函数，需在派生类里实现'''
+        '''损失计算的抽象函数，不需要考虑正则化，需在派生类里实现'''
         raise NotImplementedError("forward 方法未实现")

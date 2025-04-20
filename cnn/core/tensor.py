@@ -23,6 +23,10 @@ class Tensor:
         self.requires_grad = requires_grad  # 是否需要计算梯度
 
     @property
+    def grad(self):
+        return Tensor(self._grad)
+    
+    @property
     def T(self):  
         '''对 Tensor，shape: m*n 进行转置操作，返回 Tensor，shape: n*m。'''
         out = Tensor(self._data.T, requires_grad=self.requires_grad, _children=(self,), _op='T')
@@ -143,7 +147,21 @@ class Tensor:
     def __rtruediv__(self, other):
         other = other if isinstance(other, Tensor) else Tensor(other)
         return other / self  # 反转调用
+    
+    def __pow__(self, power):
+        power = power if isinstance(power, Tensor) else Tensor(power)
+        out = Tensor(self._data ** power._data, requires_grad=self.requires_grad, _children=(self, power), _op='**')
 
+        def _backward():
+            if self.requires_grad:
+                self._grad += (power._data * self._data ** (power._data - 1)) * out._grad
+            if power.requires_grad:
+                self_power_log = np.log(self._data + 1e-10)  # 防止 log(0)
+                power._grad += (self._data ** power._data) * self_power_log * out._grad
+        out._backward = _backward
+
+        return out
+    
     def __matmul__(self, other):
         '''重载矩阵乘法运算符，支持 Tensor，shape: m*n 和 Tensor，shape: n*p 进行矩阵乘法，返回 Tensor，shape: m*p。'''
         other = other if isinstance(other, Tensor) else Tensor(other)
@@ -191,10 +209,11 @@ class Tensor:
         out = Tensor(self._data.max(axis=axis, keepdims=keepdims), requires_grad=self.requires_grad, _children = (self,), _op = 'max')
 
         def _backward():
-            max_vals = np.max(self._data, axis=axis, keepdims=True)
-            mask = self._data == max_vals
-            grad = mask * out._grad
-            self._grad += grad
+            if self.requires_grad:
+                max_vals = np.max(self._data, axis=axis, keepdims=True)
+                mask = self._data == max_vals
+                grad = mask * out._grad
+                self._grad += grad
         out._backward = _backward
 
         return out
@@ -203,7 +222,8 @@ class Tensor:
         out = Tensor(np.exp(self._data), requires_grad=self.requires_grad, _children=(self,), _op='exp')
 
         def _backward():
-            self._grad += out._data * out._grad
+            if self.requires_grad:
+                self._grad += out._data * out._grad
         out._backward = _backward
 
         return out
@@ -212,11 +232,22 @@ class Tensor:
         out = Tensor(np.log(self._data + 1e-10), requires_grad=self.requires_grad, _children=(self,), _op='log')  # 防止 log(0)
 
         def _backward():
-            self._grad += (1 / (self._data + 1e-10)) * out._grad
+            if self.requires_grad:
+                self._grad += (1 / (self._data + 1e-10)) * out._grad
         out._backward = _backward
 
         return out
     
+    def abs(self):
+        out = Tensor(np.abs(self._data), requires_grad=self.requires_grad, _children=(self,), _op="abs")
+        
+        def _backward():
+            if self.requires_grad:
+                self._grad += np.sign(self._data) * out._grad
+        out._backward = _backward
+        
+        return out
+
     def zero_grad(self):
         '''将梯度清零。'''
         if self.requires_grad:
@@ -249,6 +280,16 @@ class Tensor:
             if not retain_graph:
                 node._children.clear()
                 node._backward = lambda: None
+
+def zeros_like(data):
+    '''返回一个全零 numpy 数组，shape 保持一致，不参与反向传播'''
+    if isinstance(data, Tensor):
+        data = data._data
+    return Tensor(np.zeros_like(data))
+
+def sqrt(data):
+    data = data if isinstance(data, Tensor) else Tensor(data)
+    return data ** 0.5
 
 if __name__ == '__main__':
     tensor_a = Tensor([[1,2,2],[1,2,2]], requires_grad=True)
