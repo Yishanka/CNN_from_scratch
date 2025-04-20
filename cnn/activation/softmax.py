@@ -7,7 +7,7 @@ class Softmax(Layer):
 
     def forward(self, x: Tensor) -> Tensor:
         # 数值稳定性
-        shifted = x - x.max(axis=1, keepdims=True)  
+        shifted = x - x.maximum(axis=1, keepdims=True)  
         exp = shifted.exp()
         out = exp / exp.sum(axis=1, keepdims=True)
         return out

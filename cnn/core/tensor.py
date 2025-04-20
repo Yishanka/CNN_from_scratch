@@ -190,7 +190,7 @@ class Tensor:
         
         return out  # 返回求和结果
     
-    def maximum(self, other):
+    def max(self, other):
         '''求出两个 Tensor 之间的最大值'''
         other = other if isinstance(other, Tensor) else Tensor(other)
         out = Tensor(np.maximum(self._data, other._data), requires_grad=self.requires_grad or other.requires_grad, _children=(self, other), _op='maximum')
@@ -204,7 +204,7 @@ class Tensor:
 
         return out
 
-    def max(self, axis=None, keepdims=False):
+    def maximum(self, axis=None, keepdims=False):
         '''求出 Tensor 按某一维度的最大值'''
         out = Tensor(self._data.max(axis=axis, keepdims=keepdims), requires_grad=self.requires_grad, _children = (self,), _op = 'max')
 
@@ -253,11 +253,6 @@ class Tensor:
         if self.requires_grad:
             self._grad = np.zeros_like(self._data)
 
-    # def one_grad(self):
-    #     '''将梯度设为 1 '''
-    #     if self.requires_grad:
-    #         self.grad = np.ones_like(self.data)
-    
     def backward(self, retain_graph=False):
         ''' 反向传播 '''
         # 初始化 loss 的导数为 1
@@ -291,9 +286,32 @@ def sqrt(data):
     data = data if isinstance(data, Tensor) else Tensor(data)
     return data ** 0.5
 
+def sum(data, axis=None, keepdims=False):
+    '''对 Tensor 的所有元素求和，返回标量 Tensor。'''
+    data = data if isinstance(data, Tensor) else Tensor(data)
+    return data.sum(axis=axis, keepdims=keepdims)
+
+def max(data, other):
+    '''求出两个 Tensor 之间的最大值'''
+    data = data if isinstance(data, Tensor) else Tensor(data)
+    return data.max(other)
+
+def exp(data):
+    data = data if isinstance(data, Tensor) else Tensor(data)
+    return data.exp()
+
+def log(data):
+    data = data if isinstance(data, Tensor) else Tensor(data)
+    return data.log()
+
+def abs(data):
+    data = data if isinstance(data, Tensor) else Tensor(data)
+    return data.abs()
+
+
 if __name__ == '__main__':
     tensor_a = Tensor([[1,2,2],[1,2,2]], requires_grad=True)
     tensor_b = Tensor([[1,2,2],[1,2,2]], requires_grad=True)
     tensor = tensor_a - tensor_b
-    tensor.sum().backward()
-    print(tensor_b)
+    sum(tensor)
+    print(tensor)

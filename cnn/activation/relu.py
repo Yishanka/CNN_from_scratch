@@ -1,4 +1,4 @@
-from cnn.core import Tensor
+from cnn.core import tensor, Tensor
 from cnn.base.layer import Layer
 
 class ReLU(Layer):
@@ -6,5 +6,5 @@ class ReLU(Layer):
         super().__init__()
 
     def forward(self, x:Tensor)->Tensor:
-        x = x.maximum(0)
+        x = tensor.max(x, 0)
         return x
