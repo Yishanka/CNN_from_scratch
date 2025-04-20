@@ -8,6 +8,8 @@ class Linear(Layer):
         self.bias = Parameter((out_features, 1))
         self.weight.he_normal()
 
-    def forward(self, x)->Tensor:
-        out = self.weight @ x + self.bias
+    def _forward(self, X)->Tensor:
+        if not isinstance(X, Tensor):
+            X = Tensor(X)
+        out = self.weight @ X.T + self.bias
         return out.T

@@ -22,17 +22,17 @@ class Parameter(Tensor):
         return super().__repr__()
         
     def xavier_uniform(self):
-        a = np.sqrt(6.0 / sum(self.data.shape))
-        self.data = np.random.uniform(-a, a, size=self.data.shape)
+        a = np.sqrt(6.0 / sum(self._data.shape))
+        self._data = np.random.uniform(-a, a, size=self._data.shape)
 
     def xavier_normal(self):
-        sigma = np.sqrt(2.0 / sum(self.data.shape))
-        self.data = np.random.normal(0, sigma, size=self.data.shape)
+        sigma = np.sqrt(2.0 / sum(self._data.shape))
+        self._data = np.random.normal(0, sigma, size=self._data.shape)
 
     def he_uniform(self):
-        a = np.sqrt(6.0 / self.data.shape[1])
-        self.data = np.random.uniform(-a, a, size=self.data.shape)
+        a = np.sqrt(6.0 / self._data.shape[1])
+        self._data = np.random.uniform(-a, a, size=self._data.shape)
 
     def he_normal(self):
-        sigma = np.sqrt(2.0 / self.data.shape[1])
-        self.data = np.random.normal(0, sigma, size=self.data.shape)
+        sigma = np.sqrt(2.0 / self._data.shape[1])
+        self._data = np.random.normal(0, sigma, size=self._data.shape)

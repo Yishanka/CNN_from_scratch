@@ -10,12 +10,25 @@ class Layer:
             self._params.append(value)
         super().__setattr__(name, value)
     
-    def __call__(self, x):
-        return self.forward(x)
+    def __call__(self, X):
+        '''
+        标准前向传播函数接口
+        Parameters:
+            X(Tensor | arraylike): 该层的输入
+        Returns:
+            Tensor: 该层的输出
+        '''
+        return self.forward(X)
         
-    def forward(self, x)->Tensor:
-        '''前向传播函数，需要在派生类里面实现'''
-        raise NotImplementedError("forward 方法未实现")
+    def forward(self, X)->Tensor:
+        '''
+        非标准前向传播函数接口，调用 _forward
+        Parameters:
+            X(Tensor | arraylike): 该层的输入
+        Returns:
+            Tensor: 该层的输出
+        '''
+        return self._forward(X)
     
     def zero_grad(self):
         '''将层中参数的梯度归零'''
@@ -25,3 +38,7 @@ class Layer:
     def parameters(self):
         '''返回层中的参数'''
         return self._params
+    
+    def _forward(self, X)->Tensor:
+        '''前向传播的抽象函数，需在派生类里实现'''
+        raise NotImplementedError("forward 方法未实现")

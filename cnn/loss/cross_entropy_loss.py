@@ -2,7 +2,7 @@ from cnn.core import Tensor
 from cnn.base.loss import Loss
 
 class CrossEntropyLoss(Loss):
-    def forward(self, pred: Tensor, true: Tensor) -> Tensor:
+    def _forward(self, pred: Tensor, true: Tensor) -> Tensor:
         """
         pred: Tensor, shape (batch, num_classes), 是 softmax 后的概率分布
         true: Tensor, shape (batch,), 是每个样本的正确类别索引

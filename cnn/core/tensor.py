@@ -17,6 +17,7 @@ class Tensor:
         self._children = set(_children)  # 子节点集合
         self._op = _op  # 操作符
         self._backward = lambda: None  # 反向传播的梯度计算函数，默认为空
+        
         self.shape = self._data.shape
         self.size = self._data.size
         self.requires_grad = requires_grad  # 是否需要计算梯度
