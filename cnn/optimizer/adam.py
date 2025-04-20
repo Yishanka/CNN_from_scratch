@@ -25,4 +25,4 @@ class Adam(Optimizer):
             m_hat = self.m[i] / (1 - self._beta1 ** self.t)
             v_hat = self.v[i] / (1 - self._beta2 ** self.t)
 
-            param = param - self._lr * m_hat / (v_hat**0.5 + self._eps)
+            param.step(self._lr * m_hat / (v_hat**0.5 + self._eps))

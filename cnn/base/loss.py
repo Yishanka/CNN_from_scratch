@@ -8,7 +8,7 @@ class Loss:
     def __repr__(self):
         return self._loss
     
-    def __call__(self, pred, true) -> Tensor:
+    def __call__(self, pred, true, params:list[Parameter]) -> Tensor:
         '''
         标准损失计算接口
         Parameters:
@@ -17,7 +17,7 @@ class Loss:
         Returns:
             Tensor: 预测值和真实值的损失
         '''
-        return self.forward(pred, true)
+        return self.forward(pred, true, params)
     
     def forward(self, pred, true, params:list[Parameter]) -> Tensor:
         '''
@@ -28,10 +28,13 @@ class Loss:
         Returns:
             Tensor: 预测值和真实值的损失
         '''
+        pred = pred if isinstance(pred, Tensor) else Tensor(pred)
+        true = true if isinstance(true, Tensor) else Tensor(true)
+
         loss = self._forward(pred, true)
         # 加上正则项
-        l2 = sum([(param ** 2).sum() for param in params])
-        l1 = sum([param.abs().sum() for param in params])
+        l2 = sum([(param ** 2).sum() for param in params if param.is_reg])
+        l1 = sum([param.abs().sum() for param in params if param.is_reg])
         self._loss = loss + self._lambda1 * l1 + self._lambda2 * l2
         return loss
     

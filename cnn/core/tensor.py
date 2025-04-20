@@ -32,6 +32,7 @@ class Tensor:
         out = Tensor(self._data.T, requires_grad=self.requires_grad, _children=(self,), _op='T')
         def _backward():
             if self.requires_grad:
+                # 广播安全
                 self._grad += out._grad.T
         out._backward = _backward
         return out
@@ -39,8 +40,8 @@ class Tensor:
     def __repr__(self):
         # 格式化输出
         data_str = f"{self._data:.3f}" if np.isscalar(self._data) else np.array2string(self._data, precision=3, separator=', ')
-        grad_str = f"{self._grad:.3f}" if np.isscalar(self._grad) else np.array2string(self._grad, precision=3, separator=', ')
-        return f"data:\n{data_str}\ngrad:\n{grad_str}"
+        grad_str = f"{self._grad:.3f}" if np.isscalar(self._grad) else np.array2string(self._grad, precision=3, separator=', ') if self.requires_grad else None
+        return f"data:\n{data_str}\ngrad:\n{grad_str}\n"
     
     def __getitem__(self, idx):
         if isinstance(idx, tuple):
@@ -71,9 +72,9 @@ class Tensor:
         def _backward():
             # ∂f(x+y)/∂x=∂f(x+y)/∂(x+y)*∂(x+y)/∂x=∂f(x+y)/∂(x+y)
             if self.requires_grad:
-                self._grad += out._grad
+                self._grad = self._grad + out._grad
             if other.requires_grad:
-                other._grad += out._grad
+                other._grad = other._grad + out._grad
         out._backward = _backward
 
         return out
@@ -82,6 +83,10 @@ class Tensor:
         '''重载加法运算符，支持两个 Tensor，shape: m*n 相加，返回 Tensor，shape: m*n。'''
         return self + other
     
+    def __iadd__(self, other):
+        '''重载加法运算符，支持两个 Tensor，shape: m*n 相加，返回 Tensor，shape: m*n。'''
+        return self + other
+
     def __neg__(self):
         out = Tensor(
             -self._data, 
@@ -93,7 +98,7 @@ class Tensor:
         def _backward():
             # ∂f(-x)/∂x=∂f(-x)/∂(-x)*∂(-x)/∂x=-∂f(x+y)/∂(x+y)
             if self.requires_grad:
-                self._grad += -out._grad
+                self._grad = self._grad - out._grad
         out._backward = _backward
 
         return out
@@ -117,9 +122,9 @@ class Tensor:
         def _backward():
             # ∂f(xy)/∂x=∂f(xy)/∂(xy)*∂(xy)/∂x=∂f(xy)/∂(xy)*y
             if self.requires_grad:
-                self._grad += other._data * out._grad
+                self._grad = self._grad + other._data * out._grad
             if other.requires_grad:
-                other._grad += self._data * out._grad
+                other._grad = other._grad + self._data * out._grad
         out._backward = _backward 
         return out
     
@@ -138,9 +143,9 @@ class Tensor:
 
         def _backward():
             if self.requires_grad:
-                self._grad += (1 / other._data) * out._grad
+                self._grad = self._grad + (1 / other._data) * out._grad
             if other.requires_grad:
-                other._grad += (-self._data / (other._data ** 2)) * out._grad
+                other._grad = other._grad + (-self._data / (other._data ** 2)) * out._grad
         out._backward = _backward
         return out
     
@@ -173,6 +178,22 @@ class Tensor:
             if other.requires_grad:
                 other._grad += self._data.T @ out._grad
         out._backward = _backward
+        return out
+    
+    def repeat(self, axis, repeats):
+        '''在指定维度上重复当前 Tensor，反向传播时对该维度求平均。'''
+        data = np.repeat(self._data, repeats, axis=axis) # 在该维度复制
+
+        out = Tensor(data, requires_grad=self.requires_grad, _children=(self,), _op='expand')
+
+        def _backward():
+            if self.requires_grad:
+                grad = out._grad
+                # 反向传播：将被 broadcast 的梯度 reduce 成原 shape（平均）
+                grad = np.mean(grad, axis=axis, keepdims=False)
+                self._grad += grad  # 注意不乘 repeat，因为是平均
+        out._backward = _backward
+
         return out
     
     def sum(self, axis=None, keepdims=False):
@@ -310,8 +331,6 @@ def abs(data):
 
 
 if __name__ == '__main__':
-    tensor_a = Tensor([[1,2,2],[1,2,2]], requires_grad=True)
-    tensor_b = Tensor([[1,2,2],[1,2,2]], requires_grad=True)
-    tensor = tensor_a - tensor_b
-    sum(tensor)
-    print(tensor)
+    tensor_a = Tensor([[1,2,2]], requires_grad=True)
+    tensor_b = tensor_a.repeat(axis=1,repeats=10)
+    print(tensor_b)

@@ -59,7 +59,7 @@ class Model:
         返回:
             Tensor: 损失值
         '''
-        return self._loss(pred, true)
+        return self._loss(pred, true, self.parameters)
 
     def backward(self):
         '''
