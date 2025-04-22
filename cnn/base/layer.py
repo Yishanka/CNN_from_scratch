@@ -1,5 +1,10 @@
 from cnn.core import Tensor, Parameter
 class Layer:
+    @property
+    def parameters(self):
+        '''返回层中的参数'''
+        return self._params
+    
     def __init__(self):
         '''初始化 layer 对象，设置参数列表'''
         self._params: list[Parameter] = []
@@ -34,10 +39,6 @@ class Layer:
         '''将层中参数的梯度归零'''
         for param in self._params:
             param.zero_grad()
-
-    def parameters(self):
-        '''返回层中的参数'''
-        return self._params
     
     def _forward(self, X)->Tensor:
         '''前向传播的抽象函数，需在派生类里实现'''

@@ -21,7 +21,7 @@ class Model:
         '''
         params: list[Parameter] = []
         for layer in self._layers:
-            params.extend(layer.parameters())
+            params.extend(layer.parameters)
         return params
 
     def __setattr__(self, name, value):

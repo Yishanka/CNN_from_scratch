@@ -62,6 +62,8 @@ class Tensor:
     def __add__(self, other):
         '''重载加法运算符，支持两个 Tensor，shape: m*n 相加，返回 Tensor，shape: m*n。'''
         other = other if isinstance(other, Tensor) else Tensor(other)
+        if other.shape != self.shape:
+            other = other.broadcast_to(self.shape)
         out = Tensor(
             self._data + other._data, 
             requires_grad=self.requires_grad or other.requires_grad, 
@@ -72,18 +74,14 @@ class Tensor:
         def _backward():
             # ∂f(x+y)/∂x=∂f(x+y)/∂(x+y)*∂(x+y)/∂x=∂f(x+y)/∂(x+y)
             if self.requires_grad:
-                self._grad = self._grad + out._grad
+                self._grad += out._grad
             if other.requires_grad:
-                other._grad = other._grad + out._grad
+                other._grad += out._grad
         out._backward = _backward
 
         return out
 
     def __radd__(self, other):
-        '''重载加法运算符，支持两个 Tensor，shape: m*n 相加，返回 Tensor，shape: m*n。'''
-        return self + other
-    
-    def __iadd__(self, other):
         '''重载加法运算符，支持两个 Tensor，shape: m*n 相加，返回 Tensor，shape: m*n。'''
         return self + other
 
@@ -98,7 +96,7 @@ class Tensor:
         def _backward():
             # ∂f(-x)/∂x=∂f(-x)/∂(-x)*∂(-x)/∂x=-∂f(x+y)/∂(x+y)
             if self.requires_grad:
-                self._grad = self._grad - out._grad
+                self._grad -= out._grad
         out._backward = _backward
 
         return out
@@ -113,6 +111,8 @@ class Tensor:
     def __mul__(self, other):
         '''重载乘法运算符，支持两个 Tensor，shape: m*n 逐元素相乘，返回 Tensor，shape: m*n。'''
         other = other if isinstance(other, Tensor) else Tensor(other)
+        if other.shape != self.shape:
+            other = other.broadcast_to(self.shape)
         out = Tensor(
             self._data * other._data, 
             requires_grad=self.requires_grad or other.requires_grad, 
@@ -122,9 +122,9 @@ class Tensor:
         def _backward():
             # ∂f(xy)/∂x=∂f(xy)/∂(xy)*∂(xy)/∂x=∂f(xy)/∂(xy)*y
             if self.requires_grad:
-                self._grad = self._grad + other._data * out._grad
+                self._grad += other._data * out._grad
             if other.requires_grad:
-                other._grad = other._grad + self._data * out._grad
+                other._grad += self._data * out._grad
         out._backward = _backward 
         return out
     
@@ -134,6 +134,8 @@ class Tensor:
     def __truediv__(self, other):
         '''重载除法运算符，支持两个 Tensor，shape: m*n 逐元素相除，返回 Tensor, shape: m*n。'''
         other = other if isinstance(other, Tensor) else Tensor(other)
+        if other.shape != self.shape:
+            other = other.broadcast_to(self.shape)
         out = Tensor(
             self._data / other._data,
             requires_grad=self.requires_grad or other.requires_grad,
@@ -143,9 +145,9 @@ class Tensor:
 
         def _backward():
             if self.requires_grad:
-                self._grad = self._grad + (1 / other._data) * out._grad
+                self._grad += (1 / other._data) * out._grad
             if other.requires_grad:
-                other._grad = other._grad + (-self._data / (other._data ** 2)) * out._grad
+                other._grad += (-self._data / (other._data ** 2)) * out._grad
         out._backward = _backward
         return out
     
@@ -155,6 +157,8 @@ class Tensor:
     
     def __pow__(self, power):
         power = power if isinstance(power, Tensor) else Tensor(power)
+        if power.shape != self.shape:
+            power = power.broadcast_to(self.shape)
         out = Tensor(self._data ** power._data, requires_grad=self.requires_grad, _children=(self, power), _op='**')
 
         def _backward():
@@ -180,20 +184,25 @@ class Tensor:
         out._backward = _backward
         return out
     
-    def repeat(self, axis, repeats):
-        '''在指定维度上重复当前 Tensor，反向传播时对该维度求平均。'''
-        data = np.repeat(self._data, repeats, axis=axis) # 在该维度复制
-
-        out = Tensor(data, requires_grad=self.requires_grad, _children=(self,), _op='expand')
+    def broadcast_to(self, shape):
+        '''
+        自动广播到目标形状，并在反向传播时正确累加梯度。
+        '''
+        out_data = np.broadcast_to(self._data, shape)
+        out = Tensor(out_data, requires_grad=self.requires_grad, _children=(self,), _op='broadcast')
 
         def _backward():
             if self.requires_grad:
                 grad = out._grad
-                # 反向传播：将被 broadcast 的梯度 reduce 成原 shape（平均）
-                grad = np.mean(grad, axis=axis, keepdims=False)
-                self._grad += grad  # 注意不乘 repeat，因为是平均
-        out._backward = _backward
+                # 逆广播：将梯度在广播维度上求和
+                grad_axes = []
+                for i, (s, t) in enumerate(zip(self.shape[::-1], shape[::-1])):
+                    if s == 1 and t != 1:
+                        grad_axes.append(len(shape) - 1 - i)
+                if grad_axes:
+                    grad = grad.sum(axis=tuple(grad_axes), keepdims=True)
 
+        out._backward = _backward
         return out
     
     def sum(self, axis=None, keepdims=False):
@@ -331,6 +340,10 @@ def abs(data):
 
 
 if __name__ == '__main__':
-    tensor_a = Tensor([[1,2,2]], requires_grad=True)
-    tensor_b = tensor_a.repeat(axis=1,repeats=10)
-    print(tensor_b)
+    # tensor_a = Tensor([[1,2,2]], requires_grad=True)
+    # tensor_b = tensor_a.repeat(axis=1,repeats=10)
+    # print(tensor_b)
+    a = Tensor([1,2,3],requires_grad=True)
+    a = a ** 3
+    print(a)
+    a.backward()

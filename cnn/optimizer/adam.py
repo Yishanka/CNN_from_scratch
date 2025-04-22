@@ -13,7 +13,7 @@ class Adam(Optimizer):
         self.v = {}  # 二阶矩估计
     
     def _step(self, params: list[Parameter]):
-        self.t += 1
+        self._t += 1
         for i, param in enumerate(params):
             if i not in self.m:
                 self.m[i] = tensor.zeros_like(param)
@@ -22,7 +22,7 @@ class Adam(Optimizer):
             self.m[i] = self._beta1 * self.m[i] + (1 - self._beta1) * param.grad
             self.v[i] = self._beta2 * self.v[i] + (1 - self._beta2) * (param.grad ** 2)
 
-            m_hat = self.m[i] / (1 - self._beta1 ** self.t)
-            v_hat = self.v[i] / (1 - self._beta2 ** self.t)
+            m_hat = self.m[i] / (1 - self._beta1 ** self._t)
+            v_hat = self.v[i] / (1 - self._beta2 ** self._t)
 
             param.step(self._lr * m_hat / (v_hat**0.5 + self._eps))
