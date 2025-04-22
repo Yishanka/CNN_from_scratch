@@ -1,8 +1,7 @@
 import cnn
 from cnn.core import Tensor
 # from cnn.data import loader
-from cnn.layer import Linear, Conv2d
-from cnn.activation import ReLU
+from cnn.layer import Linear, Conv2d, ReLU
 from cnn.optimizer import Adam
 from cnn.loss import CrossEntropyLoss
 
