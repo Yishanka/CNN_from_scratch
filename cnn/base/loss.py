@@ -32,5 +32,5 @@ class Loss:
         for node in reversed(topo):
             node._backward()
             if not retain_graph:
-                node._prev.clear()
+                node._children.clear()  # 使用_children而不是_prev
                 node._backward = lambda: None

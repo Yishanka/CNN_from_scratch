@@ -14,6 +14,10 @@ class Layer:
         '''前向传播函数，需要在派生类里面实现'''
         raise NotImplementedError("forward 方法未实现")
     
+    def __call__(self, x)->Tensor:
+        '''调用层时执行前向传播'''
+        return self.forward(x)
+    
     def zero_grad(self):
         '''将层中参数的梯度归零'''
         for param in self._params:
