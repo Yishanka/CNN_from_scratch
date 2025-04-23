@@ -14,7 +14,7 @@ class Linear(Layer):
         self._bias = Parameter((1, out_features), is_reg=False)
         he_normal(self._weight)  # 使用 He 初始化提高训练初期的稳定性
 
-    def _forward(self, X) -> Tensor:
+    def _forward(self, x) -> Tensor:
         '''
         前向传播逻辑：执行线性变换 Y = X @ W + b
 
@@ -24,7 +24,9 @@ class Linear(Layer):
         Returns:
             Tensor: 输出张量，形状为 (batch_size, out_features)
         '''
-        if not isinstance(X, Tensor):
-            X = Tensor(X)
-        out = X @ self._weight + self._bias
+        if not isinstance(x, Tensor):
+            x = Tensor(x)
+
+        # 未完成维度检查，可补充
+        out = x @ self._weight + self._bias
         return out

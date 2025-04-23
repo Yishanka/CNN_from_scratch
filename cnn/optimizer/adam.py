@@ -1,4 +1,4 @@
-from cnn.core import Parameter, tensor
+from cnn.core import Parameter, Tensor
 from cnn.base import Optimizer
 
 class Adam(Optimizer):
@@ -16,8 +16,8 @@ class Adam(Optimizer):
         self._t += 1
         for i, param in enumerate(params):
             if i not in self.m:
-                self.m[i] = tensor.zeros_like(param)
-                self.v[i] = tensor.zeros_like(param)
+                self.m[i] = Tensor.zeros_like(param)
+                self.v[i] = Tensor.zeros_like(param)
 
             self.m[i] = self._beta1 * self.m[i] + (1 - self._beta1) * param.grad
             self.v[i] = self._beta2 * self.v[i] + (1 - self._beta2) * (param.grad ** 2)

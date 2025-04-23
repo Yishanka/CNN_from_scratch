@@ -1,4 +1,4 @@
-from cnn.core import Tensor, Parameter
+from cnn.core import Parameter
 
 class Optimizer:
     def __init__(self):

@@ -1,19 +1,19 @@
-from cnn.core import tensor, Tensor
+from cnn.core import Tensor
 from cnn.base.layer import Layer
 
 class ReLU(Layer):
     def __init__(self):
         super().__init__()
 
-    def forward(self, X:Tensor)->Tensor:
-        out = tensor.max(X, 0)
+    def forward(self, x:Tensor)->Tensor:
+        out = Tensor.max(x, 0)
         return out
     
 class LeakyReLU(Layer):
     def __init__(self):
         super().__init__()
 
-    def forward(self, X:Tensor)->Tensor:
-        out = tensor.max(X, 0.01*X)
+    def forward(self, x:Tensor)->Tensor:
+        out = Tensor.max(x, 0.01*x)
         return out
     

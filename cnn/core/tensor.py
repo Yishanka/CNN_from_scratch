@@ -194,13 +194,24 @@ class Tensor:
         def _backward():
             if self.requires_grad:
                 grad = out._grad
-                # 逆广播：将梯度在广播维度上求和
-                grad_axes = []
-                for i, (s, t) in enumerate(zip(self.shape[::-1], shape[::-1])):
-                    if s == 1 and t != 1:
-                        grad_axes.append(len(shape) - 1 - i)
+
+                # === 补齐 self.shape 到目标 shape 的长度 ===
+                self_shape = self._data.shape
+                num_missing_dims = len(shape) - len(self_shape)
+                padded_shape = (1,) * num_missing_dims + self_shape  # e.g. (1, 3, 1, 5)
+
+                grad_axes = [
+                    i for i, (s, t) in enumerate(zip(padded_shape, shape))
+                    if s == 1 and t != 1
+                ]
+
                 if grad_axes:
                     grad = grad.sum(axis=tuple(grad_axes), keepdims=True)
+
+                # 去掉多余的维度，使其回到 self._data 的 shape
+                grad = grad.reshape(self_shape)
+
+                self._grad += grad
 
         out._backward = _backward
         return out
@@ -278,6 +289,64 @@ class Tensor:
         
         return out
 
+    def pad(self, pad_width: tuple[tuple[int, int], ...]):
+        '''
+        通用 zero-padding，封装 np.pad 接口。
+        
+        Parameters:
+            pad_width: 与 np.pad 一致，例如：
+                ((0, 0), (0, 0), (1, 2), (3, 3)) 表示：
+                - 第三维前 pad 1，后 pad 2
+                - 第四维前 pad 3，后 pad 3
+        '''
+        # todo: 没用tensor的索引，可选择改进
+        # 安全性校验
+        assert all(isinstance(p, tuple) and len(p) == 2 for p in pad_width), "每个维度必须是 (before, after)"
+        
+        # 自动补足维度
+        ndim = len(self.shape)
+        pad_width = list(pad_width)
+        while len(pad_width) < ndim:
+            pad_width.append((0, 0))
+        if len(pad_width) > ndim:
+            pad_width = pad_width[:ndim]
+        pad_width = tuple(pad_width)
+
+        # 使用 np.pad 进行前向计算
+        out_data = np.pad(self._data, pad_width, mode='constant')
+
+        out = Tensor(out_data, requires_grad=self.requires_grad, _children=(self,), _op='pad')
+
+        # 构造反向传播：裁剪掉 padding 区域
+        slices = tuple(
+            slice(p[0], p[0] + s) for p, s in zip(pad_width, self.shape)
+        )
+
+        def _backward():
+            if self.requires_grad:
+                grad = out._grad[slices]
+                self._grad += grad
+
+        out._backward = _backward
+        return out
+    
+    def stack(tensors, axis=0):
+        '''将一组 Tensor 沿指定维度拼接成一个新 Tensor。'''
+        assert all(isinstance(t, Tensor) for t in tensors), "所有元素必须是 Tensor"
+
+        data = np.stack([t._data for t in tensors], axis=axis)
+        requires_grad = any(t.requires_grad for t in tensors)
+        out = Tensor(data, requires_grad=requires_grad, _children=tuple(tensor for tensor in tensors), _op='pad')
+
+        def _backward():
+            if requires_grad:
+                grads = np.split(out._grad, len(tensors), axis=axis)
+                for t, g in zip(tensors, grads):
+                    t._grad += g.squeeze(axis=axis)
+
+        out._backward = _backward
+        return out
+
     def zero_grad(self):
         '''将梯度清零。'''
         if self.requires_grad:
@@ -306,29 +375,41 @@ class Tensor:
                 node._children.clear()
                 node._backward = lambda: None
 
-def zeros_like(data):
-    '''返回一个全零 numpy 数组，shape 保持一致，不参与反向传播'''
-    if isinstance(data, Tensor):
-        data = data._data
-    return Tensor(np.zeros_like(data))
+    def zeros(shape, requires_grad=False):
+        '''
+        创建一个给定 shape 的零张量。
+        '''
+        return Tensor(np.zeros(shape), requires_grad=requires_grad)
+
+    def zeros_like(data):
+        '''返回一个全零 numpy 数组，shape 保持一致，不参与反向传播'''
+        if isinstance(data, Tensor):
+            data = data._data
+        return Tensor(np.zeros_like(data))
+    
+
 
 def sqrt(data):
     data = data if isinstance(data, Tensor) else Tensor(data)
     return data ** 0.5
+
 
 def sum(data, axis=None, keepdims=False):
     '''对 Tensor 的所有元素求和，返回标量 Tensor。'''
     data = data if isinstance(data, Tensor) else Tensor(data)
     return data.sum(axis=axis, keepdims=keepdims)
 
+
 def max(data, other):
     '''求出两个 Tensor 之间的最大值'''
     data = data if isinstance(data, Tensor) else Tensor(data)
     return data.max(other)
 
+  
 def exp(data):
     data = data if isinstance(data, Tensor) else Tensor(data)
     return data.exp()
+
 
 def log(data):
     data = data if isinstance(data, Tensor) else Tensor(data)
