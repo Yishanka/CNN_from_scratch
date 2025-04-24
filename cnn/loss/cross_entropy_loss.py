@@ -29,7 +29,7 @@ class CrossEntropyLoss(Loss):
         
         # 计算数值稳定的softmax
         # 先减去每行的最大值，防止指数爆炸
-        max_vals = pred.maximum(axis=1, keepdims=True)
+        max_vals = pred.max(axis=1, keepdims=True)
         exp_pred = (pred - max_vals).exp()
         softmax_out = exp_pred / exp_pred.sum(axis=1, keepdims=True)
         

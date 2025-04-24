@@ -37,6 +37,25 @@ class Tensor:
         out._backward = _backward
         return out
     
+    def transpose(self, axes:tuple):
+        '''
+        Transpose tensor by permuting dimensions.
+        '''
+        out_data = self._data.transpose(axes)
+        out = Tensor(out_data, requires_grad=self.requires_grad, _children=(self,), _op='transpose')
+
+        def _backward():
+            if self.requires_grad:
+                # 逆转 axes：原 axes[i] = j → inverse_axes[j] = i
+                inverse_axes = [0] * len(axes)
+                for i, a in enumerate(axes):
+                    inverse_axes[a] = i
+                inverse_axes = tuple(inverse_axes)
+                self._grad += out._grad.transpose(inverse_axes)
+
+        out._backward = _backward
+        return out
+
     def __repr__(self):
         # 格式化输出
         data_str = f"{self._data:.3f}" if np.isscalar(self._data) else np.array2string(self._data, precision=3, separator=', ')
@@ -231,7 +250,7 @@ class Tensor:
         
         return out  # 返回求和结果
     
-    def max(self, other):
+    def maximum(self, other):
         '''求出两个 Tensor 之间的最大值'''
         other = other if isinstance(other, Tensor) else Tensor(other)
         out = Tensor(np.maximum(self._data, other._data), requires_grad=self.requires_grad or other.requires_grad, _children=(self, other), _op='maximum')
@@ -245,7 +264,7 @@ class Tensor:
 
         return out
 
-    def maximum(self, axis=None, keepdims=False):
+    def max(self, axis=None, keepdims=False):
         '''求出 Tensor 按某一维度的最大值'''
         out = Tensor(self._data.max(axis=axis, keepdims=keepdims), requires_grad=self.requires_grad, _children = (self,), _op = 'max')
 
@@ -289,6 +308,21 @@ class Tensor:
         
         return out
 
+    def reshape(self, shape):
+        '''
+        返回新的 Tensor，其数据是 reshape 之后的（重排原数据），梯度反向传播会 reshape 回原来的形状。
+        '''
+        out_data = self._data.reshape(shape)
+        out = Tensor(out_data, requires_grad=self.requires_grad, _children=(self,), _op='reshape')
+
+        def _backward():
+            if self.requires_grad:
+                # 把梯度 reshape 回原来的形状
+                self._grad += out._grad.reshape(self.shape)
+
+        out._backward = _backward
+        return out
+    
     def pad(self, pad_width: tuple[tuple[int, int], ...]):
         '''
         通用 zero-padding，封装 np.pad 接口。
@@ -424,7 +458,7 @@ if __name__ == '__main__':
     # tensor_a = Tensor([[1,2,2]], requires_grad=True)
     # tensor_b = tensor_a.repeat(axis=1,repeats=10)
     # print(tensor_b)
-    a = Tensor([1,2,3],requires_grad=True)
-    a = a ** 3
+    a = Tensor([1,2,3,4],requires_grad=True)
+    print(a.shape)
+    a = a.reshape((4, -1))
     print(a)
-    a.backward()

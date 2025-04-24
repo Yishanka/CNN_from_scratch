@@ -38,6 +38,14 @@ class Model:
             object.__setattr__(self, "_optimizer", value)
         object.__setattr__(self, name, value)
     
+    def sequential(self, *layers):
+        '''
+        初始化或增加新的layers
+        '''
+        layers = list(layers)
+        for layer in layers:
+            self._layers.append(layer)
+            
     def forward(self, x) -> Tensor:
         '''
         执行前向传播，依次通过模型中所有层。
