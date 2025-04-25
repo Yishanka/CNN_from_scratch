@@ -12,7 +12,7 @@ class Tensor:
             _children: 子节点，用于构建计算图，默认空元组
             _op: 操作符，用于标识该 Tensor 是如何生成的，默认空字符串
         '''
-        self._data = np.array(data) # 将数据转换为 numpy 数组
+        self._data = np.array(data, dtype=np.float32) # 将数据转换为 numpy 数组
         self._grad = np.zeros_like(self._data) if requires_grad else None  # 梯度初始化为零
         self._children = set(_children)  # 子节点集合
         self._op = _op  # 操作符
@@ -197,7 +197,7 @@ class Tensor:
         
         def _backward():
             if self.requires_grad:
-                grad = out._grad @ other._data.transpose((*range(self._data.ndim - 2), -1, -2))
+                grad = out._grad @ other._data.transpose((*range(other._data.ndim - 2), -1, -2))
                 while len(grad.shape) > len(other._data.shape):
                     grad = grad.sum(axis=0)
                 self._grad += grad

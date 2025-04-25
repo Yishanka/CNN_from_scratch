@@ -1,28 +1,66 @@
+import numpy as np
 import cnn
-from cnn.core import Tensor
-# from cnn.data import loader
-from cnn.layer import Linear, Conv2d, ReLU
-from cnn.optimizer import Adam
-from cnn.loss import CrossEntropyLoss
+from cnn.layer import Linear, ReLU, LeakyReLU, Conv2d, Flatten, MaxPool2d, Softmax
+from cnn.optimizer import SGD, Adam
+from cnn.loss import MSELoss, CrossEntropyLoss
+from cnn.data import FashionMNIST, DataLoader
 
-class Test(cnn.Model):
+# <=== 训练 ===>
+train_dataset = FashionMNIST(root='./data', train=True)
+train_dataset.to_one_hot()
+train_loader = DataLoader(train_dataset.get_data(), batch_size=64, shuffle=True)
+X_whole, y_whole = train_dataset.get_data()
+
+class SimpleCNN(cnn.Model):
     def __init__(self):
         super().__init__()
-        self.fc1 = Linear(2,1)
-        self.actv1 = ReLU()
-        self.optimizer = Adam(lr=1)
-        self.loss = CrossEntropyLoss()
+        # [64, 1, 28, 28]
+        self.conv1 = Conv2d(in_channels=1, out_channels=32, kernel_size=3, stride=1, padding=1)
+        # [64, 32, 28, 28],
+        self.ac1 = ReLU()
+        # [64, 32, 28, 28]
+        self.pool1 = MaxPool2d(kernel_size=4)
+        # [64, 32, 7, 7]
+        self.flatten1 = Flatten()
+        # [64, 32*7*7]
+        self.fc1 = Linear(in_features=32*7*7, out_features=128)
+        self.ac3 = ReLU()
+        self.fc2 = Linear(in_features=128, out_features=10)
+        self.ac4 = Softmax()
+        self.optimizer = Adam(lr=0.001)
+        self.loss = CrossEntropyLoss(lambda2=1)
 
+pred = None
+loss = None
+model = SimpleCNN()
 
-x = [10,20]
-true = []
+i = 0
+for X, y in train_loader:
+    pred = model.forward(X)
+    loss = model.compute_loss(pred, y)
+    model.backward()
+    model.step()
+    model.zero_grad()
+    print(loss)
+    if i < 400:
+        i+=1
+    else:
+        break
 
-test = Test()
+# <=== 测试 ===>
+test_dataset = FashionMNIST(root='./data', train=False)
+test_dataset.to_one_hot()
+test_loader = DataLoader(test_dataset.get_data(), batch_size=64, shuffle=False)
 
-pred = test.forward(x)
-print(pred)
-# loss = test.compute_loss(pred, true)
-# test.backward()
-# test.step()
-# test.zero_grad()
+correct = 0
+total = 0
 
+for X, y in test_loader:
+    pred = model.forward(X)
+    pred_labels = np.argmax(pred._data, axis=1)
+    true_labels = np.argmax(y._data, axis=1)
+    correct += np.sum(pred_labels == true_labels)
+    total += len(true_labels)
+
+accuracy = correct / total
+print(f"Test Accuracy: {accuracy:.4f}")
