@@ -1,19 +1,18 @@
 from cnn.core import Tensor, Parameter
 from cnn.base.loss import Loss
-import numpy as np
 
 class CrossEntropyLoss(Loss):
-    def __init__(self, reduction='mean'):
+    def __init__(self, lambda1=0, lambda2=0, reduction='mean'):
         """
         初始化交叉熵损失函数
         
         Parameters:
             reduction (str): 损失缩减方式，'mean'|'sum'|'none'，默认为'mean'
         """
-        super().__init__()
+        super().__init__(lambda1, lambda2)
         self.reduction = reduction
-    
-    def forward(self, pred: Tensor, true: Tensor):
+
+    def _forward(self, pred: Tensor, true: Tensor):
         """
         计算交叉熵损失
         
@@ -27,15 +26,9 @@ class CrossEntropyLoss(Loss):
         # 获取批次大小
         batch_size = pred.shape[0]
         
-        # 计算数值稳定的softmax
-        # 先减去每行的最大值，防止指数爆炸
-        max_vals = pred.max(axis=1, keepdims=True)
-        exp_pred = (pred - max_vals).exp()
-        softmax_out = exp_pred / exp_pred.sum(axis=1, keepdims=True)
-        
         # 计算交叉熵损失
         eps = 1e-12  # 防止取对数时出现无穷大
-        log_probs = (softmax_out + eps).log()
+        log_probs = (pred + eps).log()
         
         # 根据真实标签的形式选择不同的损失计算方式
         if len(true.shape) == 2:  # one-hot编码
@@ -53,5 +46,3 @@ class CrossEntropyLoss(Loss):
         else:  # 'mean'
             return losses.sum() / batch_size
         
-    def __str__(self):
-        return f"CrossEntropyLoss(reduction='{self.reduction}')"

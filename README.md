@@ -57,24 +57,43 @@
 ---
 
 ## 使用示例
+### 两种模型初始化方法
 
+#### 动态初始化模型
 ```python
 import cnn
-from cnn.data import loader
-from cnn.layer import Linear
-from cnn.optimizer import Adam
-from cnn.loss import CrossEntropyLoss
+from cnn.layer import Layer
+class SimpleCNN(cnn.Model)
+  def __init__(self):
+      super().__init__()
+      self.layer1 = Layer(...)
+      self.layer2 = Layer(...)
+      self.
+model = SimpleCNN()
+```
+#### 静态初始化
+```python
+import cnn
+from cnn.layer import Layer
+layer1 = Layer(...)
+layer2 = Layer(...)
+...
+model = cnn.Model(layer1, layer2, ...)
+```
 
-class TestModel(cnn.Model):
-    def __init__(self):
-        super().__init__()
-        self.fc = Linear(2, 1)
-        self.optimizer = Adam()
-        self.loss = CrossEntropyLoss()
-
-# 构造模型
-model = TestModel()
-
+#### 实际实现时，模型初始化用第一种方法，并sequential兼容第二种方法
+```python
+import cnn
+from cnn.layer import Layer
+layer1 = Layer(...)
+layer2 = Layer(...)
+...
+model = cnn.Model()
+model.sequential(layer1, layer2, ...)
+```
+### 模型预测和训练过程
+#### 自己定义，灵活性高
+```python
 # 假设 x, true 为训练数据
 pred = model.forward(x)
 loss = model.compute_loss(pred, true)
@@ -82,6 +101,8 @@ model.backward()
 model.step()
 model.zero_grad()
 ```
+
+#### 用集成的fit方法
 
 ---
 

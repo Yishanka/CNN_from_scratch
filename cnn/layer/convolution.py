@@ -1,6 +1,5 @@
 from cnn.base.layer import Layer
 from cnn.core import Parameter, Tensor, he_normal
-from cnn.layer.utils import im2col
 
 class Conv2d(Layer):
     def __init__(self, in_channels: int, out_channels: int, kernel_size: tuple|int, stride: tuple|int=1, padding: tuple|int=0):
@@ -14,7 +13,7 @@ class Conv2d(Layer):
         '''
         super().__init__()
         # 处理输入
-        self._padding = padding if isinstance(stride, tuple) else (stride, stride)
+        self._padding = padding if isinstance(padding, tuple) else (padding, padding)
         self._stride = stride if isinstance(stride, tuple) else (stride, stride)
 
         # 定义卷积核，共 out_channels 个，每个处理 in_channels 张图，卷积核尺寸为 kh, kw
@@ -49,3 +48,24 @@ class Conv2d(Layer):
         ow = (w + 2 * pw - kw) // sw + 1
         out = out + self._bias  # broadcast bias
         return out.reshape((bs, oc, oh, ow))
+    
+def im2col(x: Tensor, kernel_size, stride, padding) -> Tensor:
+    # x: [batch_size, in_channels, height, weight]
+    _, _, h, w = x.shape
+    kh, kw = kernel_size
+    sh, sw = stride
+    ph, pw = padding
+
+    # padding
+    if ph > 0 or pw > 0:
+        x = x.pad(((0, 0), (0, 0), (ph, ph), (pw, pw)))  # [bs, ic, h+2ph, w+2pw]
+
+    oh = (h + 2 * ph - kh) // sh + 1
+    ow = (w + 2 * pw - kw) // sw + 1
+
+    cols = []
+    for i in range(oh):
+        for j in range(ow):
+            patch = x[:, :, i*sh:i*sh+kh, j*sw:j*sw+kw]  # [bs, ic, kh, kw]
+            cols.append(patch.reshape((x.shape[0], -1)))   # [bs, ic*kh*kw]
+    return Tensor.stack(cols, axis=1)  # [bs, oh*ow, ic*kh*kw]

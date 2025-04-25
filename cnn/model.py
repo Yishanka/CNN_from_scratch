@@ -45,7 +45,14 @@ class Model:
         layers = list(layers)
         for layer in layers:
             self._layers.append(layer)
-            
+
+    def compile(self, optimizer: Optimizer, loss: Loss):
+        '''
+        初始化或增加新的优化器与损失
+        '''
+        self._loss = loss
+        self._optimizer = optimizer
+    
     def forward(self, x) -> Tensor:
         '''
         执行前向传播，依次通过模型中所有层。
@@ -87,3 +94,9 @@ class Model:
         '''
         for layer in self._layers:
             layer.zero_grad()
+
+    def fit(self, epoch):
+        '''
+        继承模型训练方法
+        '''
+        pass

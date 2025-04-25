@@ -194,13 +194,21 @@ class Tensor:
         '''重载矩阵乘法运算符，支持 Tensor，shape: m*n 和 Tensor，shape: n*p 进行矩阵乘法，返回 Tensor，shape: m*p。'''
         other = other if isinstance(other, Tensor) else Tensor(other)
         out = Tensor(self._data @ other._data, requires_grad=self.requires_grad or other.requires_grad, _children=(self, other), _op='matmul')
+        
         def _backward():
-            # ∂f(X/Y)/∂X=∂f(XY)/∂(XY)@∂(XY)/∂X=∂f(XY)/∂(XY)@Y.T
             if self.requires_grad:
-                self._grad += out._grad @ other._data.T
+                grad = out._grad @ other._data.transpose((*range(self._data.ndim - 2), -1, -2))
+                while len(grad.shape) > len(other._data.shape):
+                    grad = grad.sum(axis=0)
+                self._grad += grad
             if other.requires_grad:
-                other._grad += self._data.T @ out._grad
+                tmp = self._data.transpose((*range(self._data.ndim - 2), -1, -2))
+                grad = tmp @ out._grad
+                while len(grad.shape) > len(other._data.shape):
+                    grad = grad.sum(axis=0)
+                other._grad += grad
         out._backward = _backward
+        
         return out
     
     def broadcast_to(self, shape):
@@ -270,10 +278,13 @@ class Tensor:
 
         def _backward():
             if self.requires_grad:
-                max_vals = np.max(self._data, axis=axis, keepdims=True)
+                grad = out._grad
+                if not keepdims and axis is not None:
+                    grad = np.expand_dims(grad, axis=axis)
+                max_vals = self._data.max(axis=axis, keepdims=True)
                 mask = self._data == max_vals
-                grad = mask * out._grad
-                self._grad += grad
+                count = np.sum(mask, axis=axis, keepdims=True)  # 对最大值均分梯度
+                self._grad += mask * grad / count
         out._backward = _backward
 
         return out
@@ -458,7 +469,11 @@ if __name__ == '__main__':
     # tensor_a = Tensor([[1,2,2]], requires_grad=True)
     # tensor_b = tensor_a.repeat(axis=1,repeats=10)
     # print(tensor_b)
-    a = Tensor([1,2,3,4],requires_grad=True)
-    print(a.shape)
-    a = a.reshape((4, -1))
-    print(a)
+    # a = Tensor([1,2,3,4],requires_grad=True)
+    # print(a.shape)
+    # a = a.reshape((4, -1))
+    # print(a)
+    a = np.array([[[1,1,1], [1,1,1]]])
+    b = np.array([[1,1,1,1],[1,1,1,1],[1,1,1,1]])
+    c = a@b
+    print(c)
