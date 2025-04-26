@@ -46,7 +46,11 @@ class Loss:
         '''
         assert isinstance(self._loss, Tensor), "loss 尚未计算，不能反向传播"
         assert self._loss.size == 1, "只能对标量调用 backward"
-        self._loss.backward(retain_graph)
+        loss = self._loss
+        self._loss = None
+        loss.backward(retain_graph)
+        
+        
 
     def _forward(self, pred, true) -> Tensor:
         '''损失计算的抽象函数，不需要考虑正则化，需在派生类里实现'''

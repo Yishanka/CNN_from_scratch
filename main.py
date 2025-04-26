@@ -5,6 +5,13 @@ from cnn.optimizer import SGD, Adam
 from cnn.loss import MSELoss, CrossEntropyLoss
 from cnn.data import FashionMNIST, DataLoader
 
+# 检查内存与对象数量
+# import os, psutil
+# import gc
+# process = psutil.Process(os.getpid())
+# print("Memory:", process.memory_info().rss / 1024**2, "MB")
+# print(f"Objects alive: {len(gc.get_objects())}")
+
 # <=== 训练 ===>
 train_dataset = FashionMNIST(root='./data', train=True)
 train_dataset.to_one_hot()
@@ -27,24 +34,23 @@ class SimpleCNN(cnn.Model):
         self.ac3 = ReLU()
         self.fc2 = Linear(in_features=128, out_features=10)
         self.ac4 = Softmax()
-        self.optimizer = Adam(lr=0.001)
+        self.optimizer = Adam(lr=0.0001)
         self.loss = CrossEntropyLoss(lambda2=1)
 
 pred = None
 loss = None
 model = SimpleCNN()
-
+# early stopping
 i = 0
-for X, y in train_loader:
-    pred = model.forward(X)
-    loss = model.compute_loss(pred, y)
-    model.backward()
-    model.step()
-    model.zero_grad()
+for epoch in range(5):
+    for X, y in train_loader:
+        pred = model.forward(X)
+        loss = model.compute_loss(pred, y)
+        model.backward()
+        model.step()
+        model.zero_grad()
     print(loss)
-    if i < 400:
-        i+=1
-    else:
+    if loss._data<0.4:
         break
 
 # <=== 测试 ===>

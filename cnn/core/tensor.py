@@ -13,7 +13,7 @@ class Tensor:
             _op: 操作符，用于标识该 Tensor 是如何生成的，默认空字符串
         '''
         self._data = np.array(data, dtype=np.float32) # 将数据转换为 numpy 数组
-        self._grad = np.zeros_like(self._data) if requires_grad else None  # 梯度初始化为零
+        self._grad = np.zeros_like(self._data, dtype=np.float32) if requires_grad else None  # 梯度初始化为零
         self._children = set(_children)  # 子节点集合
         self._op = _op  # 操作符
         self._backward = lambda: None  # 反向传播的梯度计算函数，默认为空
@@ -245,7 +245,7 @@ class Tensor:
     
     def sum(self, axis=None, keepdims=False):
         '''对 Tensor 的所有元素求和，返回标量 Tensor。'''
-        out = Tensor(self._data.sum(axis=axis, keepdims=keepdims), requires_grad=self.requires_grad, _children=(self,), _op='sum')  # 创建新的 Tensor，表示求和结果
+        out = Tensor(self._data.sum(axis=axis, keepdims=keepdims,dtype=np.float32), requires_grad=self.requires_grad, _children=(self,), _op='sum')  # 创建新的 Tensor，表示求和结果
         
         def _backward():
             # ∂f(Σx)/∂x=∂f(Σx)/∂(Σx)*∂(Σx)/∂x=∂f(Σx)/∂(Σx)
@@ -261,7 +261,7 @@ class Tensor:
     def maximum(self, other):
         '''求出两个 Tensor 之间的最大值'''
         other = other if isinstance(other, Tensor) else Tensor(other)
-        out = Tensor(np.maximum(self._data, other._data), requires_grad=self.requires_grad or other.requires_grad, _children=(self, other), _op='maximum')
+        out = Tensor(np.maximum(self._data, other._data,dtype=np.float32), requires_grad=self.requires_grad or other.requires_grad, _children=(self, other), _op='maximum')
 
         def _backward():
             if self.requires_grad:
@@ -283,7 +283,7 @@ class Tensor:
                     grad = np.expand_dims(grad, axis=axis)
                 max_vals = self._data.max(axis=axis, keepdims=True)
                 mask = self._data == max_vals
-                count = np.sum(mask, axis=axis, keepdims=True)  # 对最大值均分梯度
+                count = np.sum(mask, axis=axis, keepdims=True, dtype=np.float32)  # 对最大值均分梯度
                 self._grad += mask * grad / count
         out._backward = _backward
 
@@ -300,7 +300,7 @@ class Tensor:
         return out
     
     def log(self):
-        out = Tensor(np.log(self._data + 1e-10), requires_grad=self.requires_grad, _children=(self,), _op='log')  # 防止 log(0)
+        out = Tensor(np.log(self._data + 1e-10,dtype=np.float32), requires_grad=self.requires_grad, _children=(self,), _op='log')  # 防止 log(0)
 
         def _backward():
             if self.requires_grad:
@@ -310,7 +310,7 @@ class Tensor:
         return out
     
     def abs(self):
-        out = Tensor(np.abs(self._data), requires_grad=self.requires_grad, _children=(self,), _op="abs")
+        out = Tensor(np.abs(self._data, dtype=np.float32), requires_grad=self.requires_grad, _children=(self,), _op="abs")
         
         def _backward():
             if self.requires_grad:
@@ -379,7 +379,7 @@ class Tensor:
         '''将一组 Tensor 沿指定维度拼接成一个新 Tensor。'''
         assert all(isinstance(t, Tensor) for t in tensors), "所有元素必须是 Tensor"
 
-        data = np.stack([t._data for t in tensors], axis=axis)
+        data = np.stack([t._data for t in tensors], axis=axis, dtype=np.float32)
         requires_grad = any(t.requires_grad for t in tensors)
         out = Tensor(data, requires_grad=requires_grad, _children=tuple(tensor for tensor in tensors), _op='pad')
 
@@ -395,7 +395,9 @@ class Tensor:
     def zero_grad(self):
         '''将梯度清零。'''
         if self.requires_grad:
-            self._grad = np.zeros_like(self._data)
+            self._grad = np.zeros_like(self._data, dtype=np.float32)
+        else:
+            self._grad = None
 
     def backward(self, retain_graph=False):
         ''' 反向传播 '''
@@ -417,21 +419,37 @@ class Tensor:
         for node in reversed(topo):
             node._backward()
             if not retain_graph:
-                node._children.clear()
+                node._children=set()
                 node._backward = lambda: None
+
+    def remove_graph(self):
+        # 拓扑排序
+        topo: list[Tensor] = []
+        visited = set()
+        def build_topo(t: Tensor):
+            if t not in visited:
+                visited.add(t)
+                for child in t._children:
+                    build_topo(child)
+                topo.append(t)
+        build_topo(self)
+
+        # 按拓扑顺序执行每个 tensor 的 _backward，开始反向传播
+        for node in reversed(topo):
+            node._children=set()
+            node._backward = lambda: None
 
     def zeros(shape, requires_grad=False):
         '''
         创建一个给定 shape 的零张量。
         '''
-        return Tensor(np.zeros(shape), requires_grad=requires_grad)
+        return Tensor(np.zeros(shape,dtype=np.float32), requires_grad=requires_grad)
 
     def zeros_like(data):
         '''返回一个全零 numpy 数组，shape 保持一致，不参与反向传播'''
         if isinstance(data, Tensor):
             data = data._data
-        return Tensor(np.zeros_like(data))
-    
+        return Tensor(np.zeros_like(data,dtype=np.float32))
 
 
 def sqrt(data):
