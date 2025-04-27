@@ -1,5 +1,6 @@
 from cnn.core.tensor import Tensor
 from cnn.core.parameter import Parameter
+from cnn.core.moniter import LossMonitor, MetricMonitor
 import numpy as np
         
 def xavier_uniform(param: Parameter):

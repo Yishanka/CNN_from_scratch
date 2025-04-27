@@ -1,5 +1,5 @@
 import numpy as np
-
+# todo: 需要为每个方法加上一个判断其结果是否需要参与到反向传播的过程中，构建计算图时忽略这个 Tensor
 class Tensor:
     '''
     Tensor 类，用于表示多维数组，并支持自动求导。
@@ -450,6 +450,11 @@ class Tensor:
         if isinstance(data, Tensor):
             data = data._data
         return Tensor(np.zeros_like(data,dtype=np.float32))
+    
+    def argmax(self, axis=None, keepdims=False):
+        '''不参与求导计算'''
+        out = self._data.argmax(axis=axis, keepdims=keepdims)
+        return out
 
 
 def sqrt(data):
