@@ -8,6 +8,7 @@ class Layer:
     def __init__(self):
         '''初始化 layer 对象，设置参数列表'''
         self._params: list[Parameter] = []
+        self.training = True
 
     def __setattr__(self, name, value):
         '''收集派生类的所有参数，放到参数列表中'''
@@ -43,3 +44,11 @@ class Layer:
     def _forward(self, X)->Tensor:
         '''前向传播的抽象函数，需在派生类里实现'''
         raise NotImplementedError("forward 方法未实现")
+    
+    def train(self):
+        """设置为训练模式"""
+        self.training = True
+        
+    def eval(self):
+        """设置为评估模式"""
+        self.training = False

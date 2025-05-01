@@ -18,19 +18,7 @@ model = SimpleCNN()
 ```python
 import cnn
 from cnn.layer import Layer
-layer1 = Layer(...)
-layer2 = Layer(...)
-...
-model = cnn.Model(layer1, layer2, ...)
-```
-
-##### 实现了sequential兼容两种架构
-```python
-import cnn
-from cnn.layer import Layer
-layer1 = Layer(...)
-layer2 = Layer(...)
-...
 model = cnn.Model()
-model.sequential(layer1, layer2, ...)
+model.sequential(Layer(), Layer(), ...)
+model.compile(Loss(), Optimizer())
 ```

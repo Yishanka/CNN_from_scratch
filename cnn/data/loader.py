@@ -109,7 +109,7 @@ class FashionMNIST:
             labels = np.frombuffer(f.read(), dtype=np.uint8)
         
         # 数据预处理：归一化到[0,1]
-        images = images.astype(np.float32) / 255.0
+        images = images.astype(np.float64) / 255.0
         
         return images, labels
     

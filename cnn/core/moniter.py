@@ -22,7 +22,7 @@ class LossMonitor:
     def append_loss(self, loss: Tensor):
         '''添加损失值'''
         loss = loss if isinstance(loss, Tensor) else Tensor(loss)
-        self.losses.append(loss._data)
+        self.losses.append(loss.data)
 
     def update_plots(self):
         '''更新图表'''

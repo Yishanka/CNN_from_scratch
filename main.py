@@ -1,9 +1,8 @@
 import numpy as np
 
-
 import cnn
 from cnn.core import Tensor, LossMonitor, MetricMonitor
-from cnn.layer import Linear, ReLU, LeakyReLU, Conv2d, Flatten, MaxPool2d, Softmax
+from cnn.layer import Linear, ReLU, LeakyReLU, Conv2d, Flatten, MaxPool2d, Softmax, BatchNorm2d
 from cnn.optimizer import SGD, Adam
 from cnn.loss import MSELoss, CrossEntropyLoss
 from cnn.data import FashionMNIST, DataLoader
@@ -29,35 +28,38 @@ test_dataset = FashionMNIST(root='./data', train=False)
 test_dataset.to_one_hot()
 test_loader = DataLoader(test_dataset.get_data(), batch_size=64, shuffle=False)
 
-class SimpleCNN(cnn.Model):
-    def __init__(self):
-        super().__init__()
-        # [64, 1, 28, 28]
-        self.conv1 = Conv2d(in_channels=1, out_channels=8, kernel_size=3, stride=1, padding=1)
-        # [64, 8, 28, 28],
-        self.ac1 = ReLU()
-        # [64, 8, 28, 28]
-        self.pool1 = MaxPool2d(kernel_size=2)
-        # [64, 8, 14, 14]
-        self.conv2 = Conv2d(in_channels=8, out_channels=32, kernel_size=3, stride=1, padding=1)
-        # [64, 32, 14, 14],
-        self.ac2 = ReLU()
-        # [64, 32, 14, 14]
-        self.pool2 = MaxPool2d(kernel_size=2)
-        # [64, 32, 7, 7]
-        self.flatten1 = Flatten()
-        # [64, 32*7*7]
-        self.fc1 = Linear(in_features=32*7*7, out_features=128)
-        self.ac3 = ReLU()
-        self.fc2 = Linear(in_features=128, out_features=10)
-        self.ac4 = Softmax()
-        self.optimizer = Adam(lr=0.0003)
-        self.loss = CrossEntropyLoss(lambda2=0.7)
+model = cnn.Model()
+model.sequential(
+    # block 1
+    Conv2d(in_channels=1, out_channels=8, kernel_size=3, stride=1, padding=1),
+    ReLU(),
+    # BatchNorm2d(channels=8),
+    MaxPool2d(kernel_size=2),
 
-model = SimpleCNN()
+    # block 2
+    Conv2d(in_channels=8, out_channels=32, kernel_size=3, stride=1, padding=1),
+    ReLU(),
+    # BatchNorm2d(channels=32),
+    MaxPool2d(kernel_size=2),
+ 
+    # flatten and dense
+    Flatten(),
+    Linear(in_features=32*7*7, out_features=128),
+    ReLU(),
+
+    # output
+    Linear(in_features=128, out_features=10),
+    Softmax()
+)
+
+model.compile(
+    loss=CrossEntropyLoss(lambda2=0.05),
+    optimizer = Adam(lr=0.00001)
+)
+
 # <=== 训练 ===>
 loss_monitor = LossMonitor(STOP_KEY) 
-for epoch in range(4):
+for epoch in range(5):
     if not loss_monitor.is_training:
         break
     

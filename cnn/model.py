@@ -4,7 +4,7 @@ from cnn.base import Layer, Loss, Optimizer
 class Model:
     '''
     神经网络模型的基础类，定义模型训练的基本流程和接口。
-    自动收集添加的层、参数、损失函数和优化器，实现 forward、backward 和优化步骤。
+    自动按序收集添加的层、参数、损失函数和优化器，实现 forward、backward 和优化步骤。
     '''
     def __init__(self):
         # 存储模型的所有层（Layer 实例）
@@ -46,7 +46,7 @@ class Model:
         for layer in layers:
             self._layers.append(layer)
 
-    def compile(self, optimizer: Optimizer, loss: Loss):
+    def compile(self, loss: Loss, optimizer: Optimizer):
         '''
         初始化或增加新的优化器与损失
         '''
@@ -100,3 +100,12 @@ class Model:
         继承模型训练方法
         '''
         pass
+
+    def train(self):
+        for layer in self._layers:
+            layer.train()
+    
+    def eval(self):
+        for layer in self._layers:
+            layer.eval()
+# todo: fit, 自动推断形状技术

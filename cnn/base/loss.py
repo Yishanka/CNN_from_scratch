@@ -36,19 +36,18 @@ class Loss:
         l2 = sum([(param ** 2).sum() for param in params if param.is_reg])
         l1 = sum([param.abs().sum() for param in params if param.is_reg])
         self._loss = loss + self._lambda1 * l1 + self._lambda2 * l2
+        
         return loss
     
-    def backward(self, retain_graph=False):
+    def backward(self):
         '''
         反向传播接口
-        Parameters:
-            retain_graph(bool): 是否保存计算图
         '''
         assert isinstance(self._loss, Tensor), "loss 尚未计算，不能反向传播"
         assert self._loss.size == 1, "只能对标量调用 backward"
         loss = self._loss
         self._loss = None
-        loss.backward(retain_graph)
+        loss.backward()
         
         
 

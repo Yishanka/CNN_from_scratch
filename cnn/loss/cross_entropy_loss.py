@@ -35,6 +35,7 @@ class CrossEntropyLoss(Loss):
             losses = -(true * log_probs).sum(axis=1)
         else:  # 类别索引
             # 获取每个样本对应类别的预测概率
+            true.to_int()
             batch_indices = range(batch_size)
             losses = -log_probs[batch_indices, true]
         

@@ -8,4 +8,7 @@ class SGD(Optimizer):
 
     def _step(self, params: list[Parameter]):
         for param in params:
-            param.step(self._lr * param.grad)
+            delta_grad = self._lr * param.grad
+            param.step(delta_grad)
+            delta_grad.remove_graph()
+            

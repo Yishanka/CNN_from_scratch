@@ -12,7 +12,7 @@ class Linear(Layer):
         super().__init__()
         self._weight = Parameter((in_features, out_features), is_reg=True)
         self._bias = Parameter((1, out_features), is_reg=False)
-        he_normal(self._weight)  # 使用 He 初始化提高训练初期的稳定性
+        he_normal(self._weight, fan_in=self._weight.shape[0])  # 使用 He 初始化提高训练初期的稳定性
 
     def _forward(self, x) -> Tensor:
         '''

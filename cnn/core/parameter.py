@@ -27,4 +27,4 @@ class Parameter(Tensor):
         Parameters:
             delta_grad(Tensor): 梯度减少的值 
         '''
-        self._data -= delta_grad._data
+        self.data -= delta_grad.data

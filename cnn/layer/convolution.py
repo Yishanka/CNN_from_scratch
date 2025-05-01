@@ -21,7 +21,7 @@ class Conv2d(Layer):
         kh, kw = kernel_size
         self._weight = Parameter((out_channels, in_channels, kh, kw), is_reg=True)
         self._bias = Parameter((out_channels, 1), is_reg=False)
-        he_normal(self._weight)
+        he_normal(self._weight, fan_in=in_channels*kh*kw)
 
     def _forward(self, x: Tensor) -> Tensor:
         if not isinstance(x, Tensor):
