@@ -46,26 +46,3 @@ class LossMonitor:
     def stop_training(self):
         '''停止训练'''
         self.is_training = False
-
-class MetricMonitor:
-    def __init__(self, type: str):
-        self.metric = [] 
-        self.type = type
-
-        # 初始化画布
-        self.fig, self.ax = plt.subplots(figsize=(8, 5))
-        plt.ion()  # 开启交互模式
-
-    def append_metric(self, value):
-        '''添加标准'''
-        self.metric.append(value)
-
-    def update_plots(self):
-        '''更新图表'''
-        self.ax.clear()
-        self.ax.plot(self.metric, label=self.type, color="blue")
-        self.ax.set_title(f"Test {self.type}")
-        self.ax.set_xlabel("Iterations")
-        self.ax.set_ylabel(self.type)
-        self.ax.legend()
-        plt.pause(0.1)

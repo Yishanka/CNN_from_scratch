@@ -23,7 +23,7 @@
 | 模块名 | 说明 |
 |--------|------|
 | `layer/` | 神经网络层模块，如 `Linear`, `Conv2d` 等，继承自 `Layer` |
-| `activation/` | 神经网络激活层模块，如 `ReLU`, `SoftMax` 等，继承自 `Layer` |
+<!-- | `activation/` | 神经网络激活层模块，如 `ReLU`, `SoftMax` 等，继承自 `Layer` | -->
 | `loss/` | 损失函数模块，如 `CrossEntropyLoss`，继承自 `Loss` |
 | `optimizer/` | 优化器模块，如 `Adam`，继承自 `Optimizer` |
 | `data/` | 数据处理模块，负责数据加载、预处理等 |

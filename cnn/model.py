@@ -10,7 +10,7 @@ class Model:
         # 存储模型的所有层（Layer 实例）
         self._layers: list[Layer] = []
         # 当前使用的损失函数（Loss 实例）
-        self._loss: Loss = None
+        self._loss_fn: Loss = None
         # 当前使用的优化器（Optimizer 实例）
         self._optimizer: Optimizer = None
 
@@ -50,7 +50,7 @@ class Model:
         '''
         初始化或增加新的优化器与损失
         '''
-        self._loss = loss
+        self._loss_fn = loss
         self._optimizer = optimizer
     
     def forward(self, x) -> Tensor:
@@ -65,7 +65,7 @@ class Model:
             x = layer(x)
         return x
 
-    def compute_loss(self, pred, true) -> Tensor:
+    def loss(self, pred, true) -> Tensor:
         '''
         计算损失函数
         参数:
@@ -74,13 +74,13 @@ class Model:
         返回:
             Tensor: 损失值
         '''
-        return self._loss(pred, true, self.parameters)
+        return self._loss_fn(pred, true, self.parameters)
 
     def backward(self):
         '''
         通过保存的 loss 执行反向传播
         '''
-        self._loss.backward()
+        self._loss_fn.backward()
 
     def step(self):
         '''
@@ -102,10 +102,16 @@ class Model:
         pass
 
     def train(self):
+        '''
+        设置模型为训练模式
+        '''
         for layer in self._layers:
             layer.train()
     
     def eval(self):
+        '''
+        设置模型为测试模式
+        '''
         for layer in self._layers:
             layer.eval()
 # todo: fit, 自动推断形状技术
