@@ -1,5 +1,6 @@
 import numpy as np
 # todo: 需要为每个方法加上一个判断其结果是否需要参与到反向传播的过程中，构建计算图时忽略这个 Tensor
+# todo: 将前向传播中调用的 broadcast 修改为反向传播中的 unbroadcast，减少计算图深度
 class Tensor:
     '''
     Tensor 类，用于表示多维数组，并支持自动求导。
@@ -82,18 +83,15 @@ class Tensor:
     def __add__(self, other):
         '''重载加法运算符，支持两个 Tensor，shape: m*n 相加，返回 Tensor，shape: m*n。'''
         other = other if isinstance(other, Tensor) else Tensor(other)
-        if other.shape != self.shape:
-            other = other.broadcast_to(self.shape)
         out = Tensor(self.data + other.data, requires_grad=self.requires_grad or other.requires_grad, children=(self, other), op='+')
 
         def _backward():
-            # ∂f(x+y)/∂x=∂f(x+y)/∂(x+y)*∂(x+y)/∂x=∂f(x+y)/∂(x+y)
             if self.requires_grad:
-                self._grad += out._grad
+                self._grad += unbroadcast(out._grad, self.shape)
             if other.requires_grad:
-                other._grad += out._grad
-        out._backward = _backward
+                other._grad += unbroadcast(out._grad, other.shape)
 
+        out._backward = _backward
         return out
 
     def __radd__(self, other):
@@ -109,7 +107,6 @@ class Tensor:
         )
 
         def _backward():
-            # ∂f(-x)/∂x=∂f(-x)/∂(-x)*∂(-x)/∂x=-∂f(x+y)/∂(x+y)
             if self.requires_grad:
                 self._grad -= out._grad
         out._backward = _backward
@@ -124,10 +121,7 @@ class Tensor:
         return (-self) + other
     
     def __mul__(self, other):
-        '''重载乘法运算符，支持两个 Tensor，shape: m*n 逐元素相乘，返回 Tensor，shape: m*n。'''
         other = other if isinstance(other, Tensor) else Tensor(other)
-        if other.shape != self.shape:
-            other = other.broadcast_to(self.shape)
         out = Tensor(
             self.data * other.data, 
             requires_grad=self.requires_grad or other.requires_grad, 
@@ -135,22 +129,18 @@ class Tensor:
             op='*'
         )
         def _backward():
-            # ∂f(xy)/∂x=∂f(xy)/∂(xy)*∂(xy)/∂x=∂f(xy)/∂(xy)*y
             if self.requires_grad:
-                self._grad += other.data * out._grad
+                self._grad += unbroadcast(other.data * out._grad, self.shape)
             if other.requires_grad:
-                other._grad += self.data * out._grad
+                other._grad += unbroadcast(self.data * out._grad, other.shape)
         out._backward = _backward 
         return out
-    
+        
     def __rmul__(self, other):
         return self.__mul__(other)
     
     def __truediv__(self, other):
-        '''重载除法运算符，支持两个 Tensor，shape: m*n 逐元素相除，返回 Tensor, shape: m*n。'''
         other = other if isinstance(other, Tensor) else Tensor(other)
-        if other.shape != self.shape:
-            other = other.broadcast_to(self.shape)
         out = Tensor(
             self.data / other.data,
             requires_grad=self.requires_grad or other.requires_grad,
@@ -160,9 +150,9 @@ class Tensor:
 
         def _backward():
             if self.requires_grad:
-                self._grad += (1 / other.data) * out._grad
+                self._grad += unbroadcast((1 / other.data) * out._grad, self.shape)
             if other.requires_grad:
-                other._grad += (-self.data / (other.data ** 2)) * out._grad
+                other._grad += unbroadcast((-self.data / (other.data ** 2)) * out._grad, other.shape)
         out._backward = _backward
         return out
     
@@ -172,20 +162,18 @@ class Tensor:
     
     def __pow__(self, power):
         power = power if isinstance(power, Tensor) else Tensor(power)
-        if power.shape != self.shape:
-            power = power.broadcast_to(self.shape)
-        out = Tensor(self.data ** power.data, requires_grad=self.requires_grad, children=(self, power), op='**')
+        out = Tensor(self.data ** power.data, requires_grad=self.requires_grad or power.requires_grad, children=(self, power), op='**')
 
         def _backward():
             if self.requires_grad:
-                self._grad += (power.data * self.data ** (power.data - 1)) * out._grad
+                self._grad += unbroadcast((power.data * self.data ** (power.data - 1)) * out._grad, self.shape)
             if power.requires_grad:
-                self_power_log = np.log(self.data + 1e-10)  # 防止 log(0)
-                power._grad += (self.data ** power.data) * self_power_log * out._grad
+                safe_log = np.log(self.data + 1e-10)  # 防止 log(0)
+                power._grad += unbroadcast((self.data ** power.data) * safe_log * out._grad, power.shape)
         out._backward = _backward
 
         return out
-    
+
     def __matmul__(self, other):
         
         other = other if isinstance(other, Tensor) else Tensor(other)
@@ -206,36 +194,36 @@ class Tensor:
         
         return out
     
-    def broadcast_to(self, shape):
-        '''
-        自动广播到目标形状，并在反向传播时正确累加梯度。
-        '''
-        out_data = np.broadcast_to(self.data, shape)
-        out = Tensor(out_data, requires_grad=self.requires_grad, children=(self,), op='broadcast')
+    # def broadcast_to(self, shape):
+    #     '''
+    #     自动广播到目标形状，并在反向传播时正确累加梯度。
+    #     '''
+    #     out_data = np.broadcast_to(self.data, shape)
+    #     out = Tensor(out_data, requires_grad=self.requires_grad, children=(self,), op='broadcast')
 
-        def _backward():
-            if self.requires_grad:
-                grad = out._grad
+    #     def _backward():
+    #         if self.requires_grad:
+    #             grad = out._grad
 
-                self_shape = self.data.shape
-                num_missing_dims = len(shape) - len(self_shape)
-                padded_shape = (1,) * num_missing_dims + self_shape  # e.g. (1, 3, 1, 5)
+    #             self_shape = self.data.shape
+    #             num_missing_dims = len(shape) - len(self_shape)
+    #             padded_shape = (1,) * num_missing_dims + self_shape  # e.g. (1, 3, 1, 5)
 
-                grad_axes = [
-                    i for i, (s, t) in enumerate(zip(padded_shape, shape))
-                    if s == 1 and t != 1
-                ]
+    #             grad_axes = [
+    #                 i for i, (s, t) in enumerate(zip(padded_shape, shape))
+    #                 if s == 1 and t != 1
+    #             ]
 
-                if grad_axes:
-                    grad = grad.sum(axis=tuple(grad_axes), keepdims=True)
+    #             if grad_axes:
+    #                 grad = grad.sum(axis=tuple(grad_axes), keepdims=True)
 
-                # 去掉多余的维度，使其回到 self.data 的 shape
-                grad = grad.reshape(self_shape)
+    #             # 去掉多余的维度，使其回到 self.data 的 shape
+    #             grad = grad.reshape(self_shape)
 
-                self._grad += grad
+    #             self._grad += grad
 
-        out._backward = _backward
-        return out
+    #     out._backward = _backward
+    #     return out
     
     def sum(self, axis=None, keepdims=False):
         '''对 Tensor 的所有元素求和，返回标量 Tensor。'''
@@ -415,6 +403,7 @@ class Tensor:
         return squared.mean(axis=axis, keepdims=keepdims)
     
 ###################################################
+    
     def zero_grad(self):
         '''将梯度清零。'''
         if self.requires_grad:
@@ -488,6 +477,20 @@ class Tensor:
         '''原地修改数据类型到int, 不参与梯度下降'''
         self.data = np.int32(self.data)
         
+def unbroadcast(grad, shape):
+    '''
+    将广播后的梯度 grad 还原到原始形状 shape。
+    '''
+    # 计算补齐后的形状
+    num_missing_dims = grad.ndim - len(shape)
+    padded_shape = (1,) * num_missing_dims + shape
+
+    axes = [i for i, (g_dim, s_dim) in enumerate(zip(grad.shape, padded_shape)) if s_dim == 1]
+
+    if axes:
+        grad = grad.sum(axis=tuple(axes), keepdims=True)
+
+    return grad.reshape(shape)
 
 def sqrt(data):
     data = data if isinstance(data, Tensor) else Tensor(data)

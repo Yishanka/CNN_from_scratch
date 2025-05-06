@@ -55,7 +55,7 @@ if __name__ == "__main__":
     # 数据
     train_dataset = FashionMNIST(root='./data', train=True)
     train_dataset.to_one_hot()
-    train_loader = DataLoader(train_dataset.get_data(), batch_size=128, shuffle=True)
+    train_loader = DataLoader(train_dataset.get_data(), batch_size=64, shuffle=True)
 
     test_dataset = FashionMNIST(root='./data', train=False)
     test_dataset.to_one_hot()
