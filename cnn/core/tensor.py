@@ -411,8 +411,8 @@ class Tensor:
         else:
             self._grad = None
 
-    def backward(self):
-        ''' 反向传播，默认不保留计算图 '''
+    def backward(self, remove_graph = True):
+        ''' 反向传播 '''
         # 初始化 loss 的导数为 1
         self._grad =np.ones_like(self.data)
 
@@ -427,11 +427,13 @@ class Tensor:
                 topo.append(t)
         build_topo(self)
 
+
         # 按拓扑顺序执行每个 tensor 的 _backward，开始反向传播
         for node in reversed(topo):
             node._backward()
-            node._children=set()
-            node._backward = lambda: None
+            if (remove_graph):
+                node._children=set()
+                node._backward = lambda: None
 
     def remove_graph(self):
         # 拓扑排序

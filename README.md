@@ -1,4 +1,5 @@
 # Convolution Neural Network from Scratch!
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Yishanka/CNN_from_scratch)
 
 ## 项目简介
 这是一个 **从零实现的卷积神经网络（CNN）框架**，仅依赖 `numpy`，目标是构建一个结构清晰、模块解耦、具有可拓展性的深度学习系统。目前支持图像分类任务，并预留接口以支持更多模型与功能扩展。

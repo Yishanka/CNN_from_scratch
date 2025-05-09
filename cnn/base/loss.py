@@ -39,7 +39,7 @@ class Loss:
         
         return loss
     
-    def backward(self):
+    def backward(self, remove_graph = True):
         '''
         反向传播接口
         '''
@@ -47,7 +47,7 @@ class Loss:
         assert self._loss.size == 1, "只能对标量调用 backward"
         loss = self._loss
         self._loss = None
-        loss.backward()
+        loss.backward(remove_graph)
         
         
 

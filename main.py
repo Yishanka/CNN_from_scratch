@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import cnn
-from cnn.core import Tensor, LossMonitor
+from cnn.core import Tensor
 from cnn.layer import Linear, ReLU, Conv2d, Flatten, MaxPool2d, Softmax
 from cnn.optimizer import Adam
 from cnn.loss import CrossEntropyLoss
@@ -82,12 +82,12 @@ if __name__ == "__main__":
 
     model.compile(
         loss=CrossEntropyLoss(lambda2=0.3),
-        optimizer=Adam(lr=0.0001)
+        optimizer=Adam(lr=0.00003)
     )
 
     # 训练
     STOP_KEY = 'space'
-    loss_monitor = LossMonitor(STOP_KEY)
+    loss_monitor = cnn.LossMonitor(STOP_KEY)
 
     metrics = {
         "train_accuracy": [],
