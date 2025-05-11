@@ -31,7 +31,7 @@ class BatchNorm2d(Layer):
         # 训练模式标志
         self.training = True
     
-    def forward(self, x: Tensor) -> Tensor:
+    def _forward(self, x: Tensor) -> Tensor:
         """
         前向传播
         

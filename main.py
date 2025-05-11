@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 
 import cnn
 from cnn.core import Tensor
-from cnn.layer import Linear, ReLU, Conv2d, Flatten, MaxPool2d, Softmax
-from cnn.optimizer import Adam
+from cnn.layer import Linear, ReLU, Conv2d, Flatten, MaxPool2d, Softmax, BatchNorm2d
+from cnn.optimizer import Adam, SGD
 from cnn.loss import CrossEntropyLoss
 from cnn.data import FashionMNIST, DataLoader
 
@@ -65,10 +65,12 @@ if __name__ == "__main__":
     model = cnn.Model()
     model.sequential(
         Conv2d(in_channels=1, out_channels=8, kernel_size=3, stride=1, padding=1),
+        BatchNorm2d(channels=8),
         ReLU(),
         MaxPool2d(kernel_size=2),
 
         Conv2d(in_channels=8, out_channels=32, kernel_size=3, stride=1, padding=1),
+        BatchNorm2d(channels=32),
         ReLU(),
         MaxPool2d(kernel_size=2),
 
@@ -81,8 +83,8 @@ if __name__ == "__main__":
     )
 
     model.compile(
-        loss=CrossEntropyLoss(lambda2=0.3),
-        optimizer=Adam(lr=0.00003)
+        loss=CrossEntropyLoss(lambda2=0.1),
+        optimizer = Adam(lr=1e-4, decay_weight=0.999, beta1=0.9, beta2=0.999)
     )
 
     # 训练
@@ -109,7 +111,7 @@ if __name__ == "__main__":
                 break
             pred = model.forward(X)
             loss = model.loss(pred, y)
-            model.backward()
+            model.backward(remove_graph=True)
             model.step()
             model.zero_grad()
 

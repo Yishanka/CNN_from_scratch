@@ -39,7 +39,7 @@ class Loss:
         
         return loss
     
-    def backward(self, remove_graph = True):
+    def backward(self, remove_graph=True):
         '''
         反向传播接口
         '''

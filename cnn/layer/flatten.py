@@ -10,7 +10,7 @@ class Flatten(Layer):
         """
         super().__init__()
     
-    def forward(self, x: Tensor) -> Tensor:
+    def _forward(self, x: Tensor) -> Tensor:
         """
         前向传播
         

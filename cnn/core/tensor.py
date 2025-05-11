@@ -411,7 +411,7 @@ class Tensor:
         else:
             self._grad = None
 
-    def backward(self, remove_graph = True):
+    def backward(self, remove_graph=True):
         ''' 反向传播 '''
         # 初始化 loss 的导数为 1
         self._grad =np.ones_like(self.data)

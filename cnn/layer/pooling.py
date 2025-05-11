@@ -38,7 +38,7 @@ class MaxPool2d(Layer):
         self._stride = stride if isinstance(stride, tuple) else (stride, stride)
         self._padding = padding if isinstance(padding, tuple) else (padding, padding)
         
-    def forward(self, x: Tensor) -> Tensor:
+    def _forward(self, x: Tensor) -> Tensor:
         """
         Parameters:
             x: 输入张量，形状为(batch_size, channels, height, width)

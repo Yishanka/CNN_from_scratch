@@ -76,7 +76,7 @@ class Model:
         '''
         return self._loss_fn(pred, true, self.parameters)
 
-    def backward(self, remove_graph = True):
+    def backward(self, remove_graph=True):
         '''
         通过保存的 loss 执行反向传播
         '''
