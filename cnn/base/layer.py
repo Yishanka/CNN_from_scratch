@@ -48,7 +48,11 @@ class Layer:
     def train(self):
         """设置为训练模式"""
         self.training = True
+        for param in self._params:
+            param.requires_grad = True
         
     def eval(self):
         """设置为评估模式"""
         self.training = False
+        for param in self._params:
+            param.requires_grad = False

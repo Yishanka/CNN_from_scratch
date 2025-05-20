@@ -114,4 +114,3 @@ class Model:
         '''
         for layer in self._layers:
             layer.eval()
-# todo: fit, 自动推断形状技术

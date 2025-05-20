@@ -2,7 +2,7 @@ from cnn.core import Parameter, Tensor
 from cnn.base import Optimizer
 
 class Adam(Optimizer):
-    def __init__(self, lr=0.001, min_lr=1e-8, decay_weight=0.99, beta1=0.9, beta2 = 0.999, eps=1e-8):
+    def __init__(self, lr=0.001, min_lr=1e-8, decay_weight=0.999, beta1=0.9, beta2 = 0.999, eps=1e-8):
         '''
         Adam 优化器，基于一阶和二阶动量进行梯度下降
         '''
@@ -29,4 +29,3 @@ class Adam(Optimizer):
             delta_grad = lr * m_hat / (v_hat**0.5 + self.eps)
 
             param.step(delta_grad) # step 不涉及 tensor 计算与矩阵构建
-            delta_grad.remove_graph()

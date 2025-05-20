@@ -144,7 +144,7 @@ loss.backward()
 
 ## 3. Optimizer 基类
 
-`Optimizer` 是所有优化器的基类（如 `SGD`, `Adam` 等），定义了统一的参数更新接口，简化优化器的实现和调用。
+`Optimizer` 是所有优化器的基类（如 `SGD`, `Adam` 等），定义了统一的参数更新接口，并提供了简单的动态学习率方法，简化优化器的实现和调用。
 
 ---
 
@@ -182,12 +182,12 @@ loss.backward()
 
 ```python
 class SGD(Optimizer):
-    def __init__(self, lr=0.01):
-        self.lr = lr
+    def __init__(self, lr=0.001, min_lr=1e-8, decay_weight=0.99):
+        super().__init__(lr, min_lr, decay_weight)
 
-    def _step(self, params):
+    def _step(self, params: list[Parameter], lr):
         for param in params:
-            delta_grad = self._lr * param.grad
+            delta_grad = lr * param.grad
             param.step(delta_grad)
 ```
 

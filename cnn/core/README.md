@@ -10,7 +10,7 @@
 
 * `data`：存储张量的数值（NumPy 数组）。
 * `requires_grad`：布尔值，指示是否需要对该张量求导。
-* `_grad`：该张量的梯度，初始为 `None`，反向传播过程中自动填充。
+* `grad`：该张量的梯度，初始为 `None`，反向传播过程中自动填充。
 * `_children`：一个包含其依赖张量的的元组。
 * `_backward`：一个函数指针，记录当前操作对应的反向传播函数。
 * `_op`：字符串，记录当前 Tensor 是由哪种操作构建的，用于调试。。
@@ -45,9 +45,9 @@
 
         def _backward():
             if self.requires_grad:
-                self._grad += unbroadcast(out._grad, self.shape)
+                self.grad += unbroadcast(out.grad, self.shape)
             if other.requires_grad:
-                other._grad += unbroadcast(out._grad, other.shape)
+                other.grad += unbroadcast(out.grad, other.shape)
 
         out._backward = _backward
         return out
@@ -71,7 +71,7 @@
     def backward(self):
         ''' 反向传播，默认不保留计算图 '''
         # 初始化 loss 的导数为 1
-        self._grad =np.ones_like(self.data)
+        self.grad =np.ones_like(self.data)
 
         # 拓扑排序
         topo: list[Tensor] = []
@@ -132,3 +132,6 @@ def unbroadcast(grad, shape):
 * 广播机制在反向传播时通过形状还原补偿。
 
 ---
+
+## 附录：优化方法
+

@@ -48,8 +48,6 @@ class Loss:
         loss = self._loss
         self._loss = None
         loss.backward(remove_graph)
-        
-        
 
     def _forward(self, pred, true) -> Tensor:
         '''损失计算的抽象函数，不需要考虑正则化，需在派生类里实现'''

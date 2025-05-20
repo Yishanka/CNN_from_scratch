@@ -83,8 +83,8 @@ if __name__ == "__main__":
     )
 
     model.compile(
-        loss=CrossEntropyLoss(lambda2=0.1),
-        optimizer = Adam(lr=1e-4, decay_weight=0.999, beta1=0.9, beta2=0.999)
+        loss=CrossEntropyLoss(lambda2=0.05),
+        optimizer = Adam(lr=1e-4, decay_weight=0.999, min_lr=1e-6 ,beta1=0.9, beta2=0.999)
     )
 
     # 训练
@@ -105,7 +105,7 @@ if __name__ == "__main__":
         if not loss_monitor.is_training:
             break
 
-        model.train()
+        model.train() # 必须执行，保证参数参与计算图构建
         for X, y in train_loader:
             if not loss_monitor.is_training:
                 break
@@ -118,7 +118,7 @@ if __name__ == "__main__":
             loss_monitor.append_loss(loss=loss)
             loss_monitor.update_plots()
 
-        model.eval()
+        model.eval() # 必须执行，保证参数正确不参与计算图构建
         # 记录训练和测试的预测结果
         train_preds, train_trues = [], []
         test_preds, test_trues = [], []
@@ -128,7 +128,6 @@ if __name__ == "__main__":
         for X, y in train_loader:
             pred = model.forward(X)
             loss = model.loss(pred, y)
-            loss.remove_graph()
             train_loss.append(loss.data)
             train_preds.append(pred)
             train_trues.append(y)
@@ -138,15 +137,14 @@ if __name__ == "__main__":
         train_trues = np.concatenate([t.data for t in train_trues], axis=0)
 
         # 计算训练集指标
-        acc, prec, rec, f1 = compute_multiclass_metrics(train_preds, train_trues)
-        metrics["train_accuracy"].append(acc)
+        train_acc, prec, rec, f1 = compute_multiclass_metrics(train_preds, train_trues)
+        metrics["train_accuracy"].append(train_acc)
         metrics["train_loss"].append(np.mean(train_loss))
 
         # 计算测试集的指标
         for X, y in test_loader:
             pred = model.forward(X)
             loss = model.loss(pred, y)
-            loss.remove_graph()
             test_loss.append(loss.data)
             test_preds.append(pred)
             test_trues.append(y)
@@ -156,14 +154,14 @@ if __name__ == "__main__":
         test_trues = np.concatenate([t.data for t in test_trues], axis=0)
 
         # 计算测试集指标
-        acc, prec, rec, f1 = compute_multiclass_metrics(test_preds, test_trues)
-        metrics["test_accuracy"].append(acc)
+        test_acc, prec, rec, f1 = compute_multiclass_metrics(test_preds, test_trues)
+        metrics["test_accuracy"].append(test_acc)
         metrics["test_loss"].append(np.mean(test_loss))
         metrics["precision"].append(prec)
         metrics["recall"].append(rec)
         metrics["f1"].append(f1)
 
-        print(f"Epoch {epoch + 1}: Train Acc={acc:.4f}, Test Acc={acc:.4f}, Precision={prec:.4f}, Recall={rec:.4f}, F1={f1:.4f}")
+        print(f"Epoch {epoch + 1}: Train Acc={train_acc:.4f}, Test Acc={test_acc:.4f}, Precision={prec:.4f}, Recall={rec:.4f}, F1={f1:.4f}")
 
     # 作图
     plt.figure(figsize=(12, 6))
