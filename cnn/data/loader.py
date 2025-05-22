@@ -5,6 +5,8 @@ import os
 import struct
 from cnn.core import Tensor
 
+np.random.seed(42)
+
 class DataLoader:
     def __init__(self, dataset, batch_size=32, shuffle=True):
         """

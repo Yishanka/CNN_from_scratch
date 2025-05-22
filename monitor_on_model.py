@@ -60,31 +60,31 @@ if __name__ == "__main__":
 
     test_dataset = FashionMNIST(root='./data', train=False)
     test_dataset.to_one_hot()
-    test_loader = DataLoader(test_dataset.get_data(), batch_size=64, shuffle=False)
+    test_loader = DataLoader(test_dataset.get_data(), batch_size=1000, shuffle=False)
 
     # 模型
     model = cnn.Model()
     model.sequential(
-        Conv2d(in_channels=1, out_channels=8, kernel_size=3, stride=1, padding=1),
-        BatchNorm2d(channels=8),
+        Conv2d(in_channels=1, out_channels=10, kernel_size=3, stride=1, padding=1),
+        BatchNorm2d(channels=10),
         ReLU(),
         MaxPool2d(kernel_size=2),
 
-        Conv2d(in_channels=8, out_channels=32, kernel_size=3, stride=1, padding=1),
-        BatchNorm2d(channels=32),
+        Conv2d(in_channels=10, out_channels=40, kernel_size=3, stride=1, padding=1),
+        BatchNorm2d(channels=40),
         ReLU(),
         MaxPool2d(kernel_size=2),
 
         Flatten(),
 
-        Linear(in_features=32*7*7, out_features=128),
+        Linear(in_features=40*7*7, out_features=128),
         ReLU(),
         Linear(in_features=128, out_features=10),
         Softmax()
     )
 
     model.compile(
-        loss=CrossEntropyLoss(lambda2=0.05),
+        loss=CrossEntropyLoss(lambda2=0.1),
         optimizer = Adam(lr=1e-4, decay_weight=0.999, min_lr=1e-6 ,beta1=0.9, beta2=0.999)
     )
 
@@ -111,19 +111,20 @@ if __name__ == "__main__":
         for batch_idx, (X, y) in enumerate(train_loader):
             if not loss_monitor.is_training:
                 break
-            start = time.time()
+            if (batch_idx % 10 == 0):
+                start = time.time()
             pred = model.forward(X) 
             loss = model.loss(pred, y)
             model.backward(remove_graph=True)
             model.step()
             model.zero_grad()
+            if (batch_idx % 10 == 9):
+                round_time = time.time() - start
+                print(f'one round: {round_time}')
             
-            # round_time = time.time() - start
-            # print(f'one round: {round_time}')
             
-            if (batch_idx % 10 == 0):
-                loss_monitor.append_loss(loss=loss)
-                loss_monitor.update_plots()
+            loss_monitor.append_loss(loss=loss)
+            loss_monitor.update_plots()
 
         model.eval() # 必须执行，保证参数正确不参与计算图构建
         # 记录训练和测试的预测结果

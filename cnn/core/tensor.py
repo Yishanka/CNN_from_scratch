@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.lib.stride_tricks import as_strided
 # todo: 需要为每个方法加上一个判断其结果是否需要参与到反向传播的过程中，构建计算图时忽略这个 Tensor
 # todo: 将前向传播中调用的 broadcast 修改为反向传播中的 unbroadcast，减少计算图深度
 class Tensor:
@@ -19,8 +20,12 @@ class Tensor:
         # self._op = op  # 操作符
         self._backward = lambda: None  # 反向传播的梯度计算函数，默认为空
 
-        self.shape = self.data.shape
-        self.size = self.data.size
+    @property
+    def shape(self):
+        return self.data.shape
+    @property
+    def size(self):
+        return self.data.size
       
     def __repr__(self):
         data_str = f'{self.data:.4f}' if np.isscalar(self.data) else np.array2string(
@@ -44,6 +49,29 @@ class Tensor:
             out._backward = _backward
 
         return out
+    
+    # def __getitem__(self, idx):
+    #     """
+    #     不创建新 Tensor，仅将自身 data 和 grad 切片并重新绑定 backward
+    #     """
+    #     # 保存旧状态
+    #     old_grad = self.grad
+    #     old_backward = self._backward
+
+    #     # 切片视图
+    #     self.data = self.data[idx]
+    #     self.grad = self.grad[idx]
+
+    #     if self.requires_grad:
+    #         def new_backward():
+    #             # 将局部 grad 写回全局 grad
+    #             np.add.at(old_grad, idx, self.grad)
+    #             if old_backward:
+    #                 old_backward()
+    #         self._backward = new_backward
+            
+
+    #     return self  # 返回自身
     
     @property
     def T(self):
@@ -354,7 +382,39 @@ class Tensor:
             out._backward = _backward
         
         return out
+        
+    def as_strided(self, shape, strides):
+        '''创建视图'''
+        out_data = np.lib.stride_tricks.as_strided(self.data, shape=shape, strides=strides)
+        out = Tensor(out_data, requires_grad=self.requires_grad, children=(self,))
 
+        if self.requires_grad:
+            grad_view = np.lib.stride_tricks.as_strided(self.grad, shape=shape, strides=strides)
+            def _backward():
+                np.add.at(grad_view, ..., out.grad)
+            out._backward = _backward
+
+        return out
+
+    def as_strided_inplace(self, shape, strides):
+        '''原地创建视图，不创建新结点，减少分配内存'''
+
+        # 保存原本的 backward 方法（可能是 None 或已有计算图）
+        old_backward = self._backward
+        
+        data_raw = self.data
+        grad_raw = self.grad
+        # 修改 data 为视图
+        self.data = np.lib.stride_tricks.as_strided(self.data, shape=shape, strides=strides)
+        self.grad = np.lib.stride_tricks.as_strided(self.grad, shape=shape, strides=strides)
+
+        if self.requires_grad:
+            def new_backward():
+                self.grad = grad_raw
+                old_backward()  # 保证之前的 backward 链仍然能走下去
+
+            self._backward = new_backward
+    
     def mean(self, axis=None, keepdims=False):
         data = self.data.mean(axis=axis, keepdims=keepdims)
         out = Tensor(data, requires_grad=self.requires_grad, children=(self,))
@@ -386,7 +446,8 @@ class Tensor:
         centered = self - mean
         squared = centered * centered
         return squared.mean(axis=axis, keepdims=keepdims)
-    
+
+
 ###################################################
     
     def zero_grad(self):
@@ -538,14 +599,27 @@ def abs(data):
     #     return out
 
 if __name__ == '__main__':
-    # tensor_a = Tensor([[1,2,2]], requires_grad=True)
-    # tensor_b = tensor_a.repeat(axis=1,repeats=10)
-    # print(tensor_b)
-    # a = Tensor([1,2,3,4],requires_grad=True)
-    # print(a.shape)
-    # a = a.reshape((4, -1))
-    # print(a)
-    a = np.array([[[1,1,1], [1,1,1]]])
-    b = np.array([[1,1,1,1],[1,1,1,1],[1,1,1,1]])
-    c = a@b
-    print(c)
+    x = Tensor(np.arange(1 * 1 * 4 * 4).reshape(1, 1, 4, 4).astype(float), requires_grad=True)
+
+    # 提取 2x2 patch，滑动步长为1，目标是生成 (bs, ic, out_h, out_w, kh, kw)
+    bs, ic, h, w = x.shape
+    kh, kw = 2, 2
+    sh, sw = 1, 1
+    oh, ow = (h - kh)//sh + 1, (w - kw)//sw + 1
+
+    shape = (bs, ic, oh, ow, kh, kw)
+    strides = (
+        x.data.strides[0],  # bs
+        x.data.strides[1],  # ic
+        x.data.strides[2] * sh,  # 高方向滑动
+        x.data.strides[3] * sw,  # 宽方向滑动
+        x.data.strides[2],       # patch 高度
+        x.data.strides[3]        # patch 宽度
+    )
+
+    y = x.as_strided(shape, strides)
+    z = y.sum()
+    z.backward()
+
+    print("x.grad:")
+    print(x.grad)

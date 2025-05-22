@@ -1,7 +1,8 @@
 from cnn.core.tensor import Tensor
 from cnn.core.parameter import Parameter
 import numpy as np
-        
+
+np.random.seed(42)
 def xavier_uniform(param: Parameter, fan_in, fan_out):
     a = np.sqrt(6.0 / (fan_in + fan_out))
     param.data = np.random.uniform(-a, a, size=param.data.shape)

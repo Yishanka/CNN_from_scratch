@@ -23,15 +23,35 @@ test_loader = DataLoader(test_dataset, batch_size=1000, shuffle=False)
 class SimpleCNN(nn.Module):
     def __init__(self):
         super(SimpleCNN, self).__init__()
-        self.conv1 = nn.Conv2d(1, 32, 3, 1)
-        self.conv2 = nn.Conv2d(32, 64, 3, 1)
-        self.fc1 = nn.Linear(64 * 24 * 24, 128)
+        # 卷积层1: 输入1通道，输出32通道，3x3卷积核，步长1，padding自动计算
+        self.conv1 = nn.Conv2d(1, 32, kernel_size=3, stride=1, padding='same')  # 输出尺寸: (32, 28, 28)
+        self.bn1 = nn.BatchNorm2d(32)  # 批归一化，通道数需匹配conv1输出
+        self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)  # 输出尺寸: (32, 14, 14)
+        
+        # 卷积层2: 输入32通道，输出64通道
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, stride=1, padding='same')  # 输出尺寸: (64, 14, 14)
+        self.bn2 = nn.BatchNorm2d(64)
+        self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)  # 输出尺寸: (64, 7, 7)
+        
+        # 全连接层
+        self.fc1 = nn.Linear(64 * 7 * 7, 128)  # 注意输入维度已因池化改变
         self.fc2 = nn.Linear(128, 10)
 
     def forward(self, x):
-        x = torch.max_pool2d(torch.relu(torch.batch_norm(self.conv1(x))))
-        x = torch.max_pool2d(torch.relu(torch.batch_norm(self.conv2(x))))
-        x = torch.flatten(x, 1)
+        # 第一层卷积块
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = torch.relu(x)
+        x = self.pool1(x)
+        
+        # 第二层卷积块
+        x = self.conv2(x)
+        x = self.bn2(x)
+        x = torch.relu(x)
+        x = self.pool2(x)
+        
+        # 全连接层
+        x = torch.flatten(x, 1)  # 保持batch维度
         x = torch.relu(self.fc1(x))
         x = self.fc2(x)
         return x

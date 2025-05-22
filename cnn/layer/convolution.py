@@ -48,24 +48,57 @@ class Conv2d(Layer):
         ow = (w + 2 * pw - kw) // sw + 1
         out = out + self._bias  # broadcast bias
         return out.reshape((bs, oc, oh, ow))
-    
+
 def im2col(x: Tensor, kernel_size, stride, padding) -> Tensor:
-    # x: [batch_size, in_channels, height, weight]
-    _, _, h, w = x.shape
+    # x: [B, C, H, W]
+    bs, c, _, _ = x.shape
     kh, kw = kernel_size
     sh, sw = stride
     ph, pw = padding
 
-    # padding
+    # Padding
     if ph > 0 or pw > 0:
-        x = x.pad(((0, 0), (0, 0), (ph, ph), (pw, pw)))  # [bs, ic, h+2ph, w+2pw]
+        x = x.pad(((0, 0), (0, 0), (ph, ph), (pw, pw)))
+    h_padded, w_padded = x.shape[2], x.shape[3]
 
-    oh = (h + 2 * ph - kh) // sh + 1
-    ow = (w + 2 * pw - kw) // sw + 1
+    # Output shape
+    oh = (h_padded - kh) // sh + 1
+    ow = (w_padded - kw) // sw + 1
 
-    cols = []
-    for i in range(oh):
-        for j in range(ow):
-            patch = x[:, :, i*sh:i*sh+kh, j*sw:j*sw+kw]  # [bs, ic, kh, kw]
-            cols.append(patch.reshape((x.shape[0], -1)))   # [bs, ic*kh*kw]
-    return Tensor.stack(cols, axis=1)  # [bs, oh*ow, ic*kh*kw]
+    # 构造目标形状和步长
+    shape = (bs, oh, ow, c, kh, kw)
+    strides = (
+        x.data.strides[0],                  # B
+        x.data.strides[2] * sh,             # OH
+        x.data.strides[3] * sw,             # OW
+        x.data.strides[1],                  # C
+        x.data.strides[2],                  # KH
+        x.data.strides[3]                   # KW
+    )
+    x = x.as_strided(shape, strides)
+    # x.as_strided_inplace(shape, strides)  # [B, C, OH, OW, KH, KW]
+    x = x.reshape((bs, oh * ow, c * kh * kw))  # [B, OH*OW, C*KH*KW]
+
+    return x
+
+
+# def im2col(x: Tensor, kernel_size, stride, padding) -> Tensor:
+#     # x: [batch_size, in_channels, height, weight]
+#     _, _, h, w = x.shape
+#     kh, kw = kernel_size
+#     sh, sw = stride
+#     ph, pw = padding
+
+#     # padding
+#     if ph > 0 or pw > 0:
+#         x = x.pad(((0, 0), (0, 0), (ph, ph), (pw, pw)))  # [bs, ic, h+2ph, w+2pw]
+
+#     oh = (h + 2 * ph - kh) // sh + 1
+#     ow = (w + 2 * pw - kw) // sw + 1
+
+#     cols = []
+#     for i in range(oh):
+#         for j in range(ow):
+#             patch = x[:, :, i*sh:i*sh+kh, j*sw:j*sw+kw]  # [bs, ic, kh, kw]
+#             cols.append(patch.reshape((x.shape[0], -1)))   # [bs, ic*kh*kw]
+#     return Tensor.stack(cols, axis=1)  # [bs, oh*ow, ic*kh*kw]
