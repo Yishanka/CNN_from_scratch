@@ -87,7 +87,7 @@
         # 按拓扑顺序执行每个 tensor 的 _backward，开始反向传播
         for node in reversed(topo):
             node._backward()
-            node._children=set()
+            node._children=()
             node._backward = lambda: None
 ```
 
@@ -130,8 +130,3 @@ def unbroadcast(grad, shape):
 * 每个反向传播函数负责实现该操作对应的求导规则；
 * 通过逆拓扑顺序遍历计算图，实现全局梯度回传；
 * 广播机制在反向传播时通过形状还原补偿。
-
----
-
-## 附录：优化方法
-

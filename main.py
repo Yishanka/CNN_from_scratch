@@ -7,6 +7,7 @@ from cnn.layer import Linear, ReLU, Conv2d, Flatten, MaxPool2d, Softmax, BatchNo
 from cnn.optimizer import Adam, SGD
 from cnn.loss import CrossEntropyLoss
 from cnn.data import FashionMNIST, DataLoader
+import time
 
 # ==== 评估指标函数 ====
 def compute_metrics(pred, true):
@@ -88,9 +89,6 @@ if __name__ == "__main__":
     )
 
     # 训练
-    STOP_KEY = 'space'
-    loss_monitor = cnn.LossMonitor(STOP_KEY)
-
     metrics = {
         "train_accuracy": [],
         "test_accuracy": [],
@@ -102,21 +100,14 @@ if __name__ == "__main__":
     }
 
     for epoch in range(5):
-        if not loss_monitor.is_training:
-            break
-
         model.train() # 必须执行，保证参数参与计算图构建
-        for X, y in train_loader:
-            if not loss_monitor.is_training:
-                break
-            pred = model.forward(X)
+        for batch_idx, (X, y) in enumerate(train_loader):
+            start = time.time()
+            pred = model.forward(X) 
             loss = model.loss(pred, y)
             model.backward(remove_graph=True)
             model.step()
             model.zero_grad()
-
-            loss_monitor.append_loss(loss=loss)
-            loss_monitor.update_plots()
 
         model.eval() # 必须执行，保证参数正确不参与计算图构建
         # 记录训练和测试的预测结果

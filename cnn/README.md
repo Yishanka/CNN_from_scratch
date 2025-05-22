@@ -14,6 +14,8 @@ class SimpleCNN(cnn.Model)
 model = SimpleCNN()
 ```
 
+动态初始化还支持自定义 `forward` 函数，不局限于 `sequential` 形式的层组合。
+
 ##### 静态初始化
 ```python
 import cnn
