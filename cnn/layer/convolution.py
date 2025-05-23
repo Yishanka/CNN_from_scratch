@@ -41,7 +41,7 @@ class Conv2d(Layer):
         
         # 执行批量矩阵乘法
         out = cols @ weight_flat  # [bs, oh*ow, oc]
-        out = out.transpose((0, 2, 1))  # [bs, oc, oh*ow]
+        out.transpose((0, 2, 1), inplace=True)  # [bs, oc, oh*ow]
 
         # 添加 bias 并 reshape 成卷积输出
         oh = (h + 2 * ph - kh) // sh + 1
@@ -75,8 +75,7 @@ def im2col(x: Tensor, kernel_size, stride, padding) -> Tensor:
         x.data.strides[2],                  # KH
         x.data.strides[3]                   # KW
     )
-    x = x.as_strided(shape, strides)
-    # x.as_strided_inplace(shape, strides)  # [B, C, OH, OW, KH, KW]
+    x = x.as_strided(shape, strides)  # [B, C, OH, OW, KH, KW]
     x = x.reshape((bs, oh * ow, c * kh * kw))  # [B, OH*OW, C*KH*KW]
 
     return x

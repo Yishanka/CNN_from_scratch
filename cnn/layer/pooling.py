@@ -65,7 +65,6 @@ def im2col(x: Tensor, kernel_size, stride, padding) -> Tensor:
     strides = (s0, s1, s2 * sh, s3 * sw, s2, s3)
     
     x = x.as_strided(shape, strides)
-    # x.as_strided_inplace(shape, strides)
     # reshape 为 [bs, ic, oh*ow, kh*kw]
     x = x.reshape((bs, ic, oh * ow, kh * kw))
     return x

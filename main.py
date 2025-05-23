@@ -65,26 +65,26 @@ if __name__ == "__main__":
     # 模型
     model = cnn.Model()
     model.sequential(
-        Conv2d(in_channels=1, out_channels=10, kernel_size=3, stride=1, padding=1),
-        BatchNorm2d(channels=10),
+        Conv2d(in_channels=1, out_channels=16, kernel_size=3, stride=1, padding=1),
+        BatchNorm2d(channels=16),
         ReLU(),
         MaxPool2d(kernel_size=2),
 
-        Conv2d(in_channels=10, out_channels=40, kernel_size=3, stride=1, padding=1),
-        BatchNorm2d(channels=40),
+        Conv2d(in_channels=16, out_channels=64, kernel_size=3, stride=1, padding=1),
+        BatchNorm2d(channels=64),
         ReLU(),
         MaxPool2d(kernel_size=2),
 
         Flatten(),
 
-        Linear(in_features=40*7*7, out_features=128),
+        Linear(in_features=64*7*7, out_features=128),
         ReLU(),
         Linear(in_features=128, out_features=10),
         Softmax()
     )
 
     model.compile(
-        loss=CrossEntropyLoss(lambda2=0.05),
+        loss=CrossEntropyLoss(lambda2=0.02),
         optimizer = Adam(lr=1e-4, decay_weight=0.999, min_lr=1e-7 ,beta1=0.9, beta2=0.999)
     )
 

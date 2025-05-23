@@ -6,7 +6,7 @@ class Tensor:
     '''
     Tensor 类，用于表示多维数组，并支持自动求导。
     '''
-    def __init__(self, data, requires_grad:bool=False, children=()):
+    def __init__(self, data, requires_grad:bool=False, children=(), dtype=np.float32):
         '''
         Parameters:
             data: 数据，转换为 numpy 数组
@@ -14,11 +14,12 @@ class Tensor:
             _children: 子节点，用于构建计算图，默认空元组
         '''
         self.requires_grad = requires_grad  # 是否需要计算梯度
-        self.data = np.asarray(data, dtype=np.float32)
-        self.grad = np.zeros_like(self.data, dtype=np.float32) if self.requires_grad else None  # 梯度初始化为零
+        self.data = np.asarray(data, dtype=dtype)
+        self.grad = np.zeros_like(self.data, dtype=dtype) if self.requires_grad else None  # 梯度初始化为零
         self._children = tuple(children) if self.requires_grad else None # 子节点集合
         # self._op = op  # 操作符
         self._backward = lambda: None  # 反向传播的梯度计算函数，默认为空
+        self.dtype = np.float32
 
     @property
     def shape(self):
@@ -49,52 +50,53 @@ class Tensor:
             out._backward = _backward
 
         return out
-    
-    # def __getitem__(self, idx):
-    #     """
-    #     不创建新 Tensor，仅将自身 data 和 grad 切片并重新绑定 backward
-    #     """
-    #     # 保存旧状态
-    #     old_grad = self.grad
-    #     old_backward = self._backward
-
-    #     # 切片视图
-    #     self.data = self.data[idx]
-    #     self.grad = self.grad[idx]
-
-    #     if self.requires_grad:
-    #         def new_backward():
-    #             # 将局部 grad 写回全局 grad
-    #             np.add.at(old_grad, idx, self.grad)
-    #             if old_backward:
-    #                 old_backward()
-    #         self._backward = new_backward
-            
-
-    #     return self  # 返回自身
-    
+        
     @property
     def T(self):
         out = Tensor(self.data.T, requires_grad=self.requires_grad, children=(self,))
         
         if self.requires_grad:
             def _backward():
-                np.add(self.grad, out.grad.T, out=self.grad)
+                np.add(self.grad, out.grad.T, out=self.grad)  
             out._backward = _backward
         
         return out
     
-    def transpose(self, axes: tuple):
+    
+    def transpose(self, axes: tuple, inplace=False):
+        if inplace:
+            Tensor._transpose_inplace(self, axes)
+        else:
+            return Tensor._transpose(self, axes)
+    
+    def _transpose_inplace(self, axes: tuple):
+        '''通过置换维度来转置张量。'''
+        self.data = self.data.transpose(axes)
+        self.grad = self.grad.transpose(axes) if self.requires_grad else None
+        old_backward = self._backward
+
+        if self.requires_grad:
+            inverse_axes = tuple(np.argsort(axes))
+
+            def _backward():
+                self.data = self.data.transpose(inverse_axes)
+                self.grad = self.grad.transpose(inverse_axes)
+                if old_backward:
+                    old_backward()
+
+            self._backward = _backward
+    
+    def _transpose(self, axes: tuple):
         '''通过置换维度来转置张量。'''
         out = Tensor(self.data.transpose(axes), requires_grad=self.requires_grad, children=(self,))
 
         if self.requires_grad:
-            inverse_axes = tuple(np.argsort(axes))  # More efficient than manual loop
+            inverse_axes = tuple(np.argsort(axes))
 
             def _backward():
-                np.add(self.grad, out.grad.transpose(inverse_axes),self.grad)
-
+                np.add(self.grad, out.grad.transpose(inverse_axes), out=self.grad)
             out._backward = _backward
+        
         return out
       
     def __add__(self, other):
@@ -156,7 +158,7 @@ class Tensor:
         return out
         
     def __rmul__(self, other):
-        return self.__mul__(other)
+        return self * other
     
     def __truediv__(self, other):
         other = other if isinstance(other, Tensor) else Tensor(other)
@@ -243,12 +245,12 @@ class Tensor:
 
     def sum(self, axis=None, keepdims=False):
         '''对 Tensor 的所有元素求和，返回标量 Tensor。'''
-        out = Tensor(self.data.sum(axis=axis, keepdims=keepdims, dtype=np.float32), requires_grad=self.requires_grad, children=(self,))
+        out = Tensor(self.data.sum(axis=axis, keepdims=keepdims,dtype=self.dtype), requires_grad=self.requires_grad, children=(self,))
         
         if self.requires_grad:
             def _backward():
                 grad = np.expand_dims(out.grad, axis) if not keepdims and axis else out.grad
-                np.add(self.grad, np.ones_like(self.data) * grad, out=self.grad)
+                np.add(self.grad, grad, out=self.grad)
             out._backward = _backward 
         
         return out
@@ -256,7 +258,7 @@ class Tensor:
     def maximum(self, other):
         '''求出两个 Tensor 之间的最大值'''
         other = other if isinstance(other, Tensor) else Tensor(other)
-        out = Tensor(np.maximum(self.data, other.data,dtype=np.float32), requires_grad=self.requires_grad or other.requires_grad, children=(self, other))
+        out = Tensor(np.maximum(self.data, other.data, dtype=self.dtype), requires_grad=self.requires_grad or other.requires_grad, children=(self, other))
 
         if out.requires_grad:
             def _backward():
@@ -274,7 +276,7 @@ class Tensor:
         if self.requires_grad:
             max_vals = self.data.max(axis=axis, keepdims=True)
             mask = self.data == max_vals
-            count = np.sum(mask, axis=axis, keepdims=True, dtype=np.float32)  # 对最大值均分梯度
+            count = np.sum(mask, axis=axis, keepdims=True)  # 对最大值均分梯度
             def _backward():
                 grad = out.grad
                 if not keepdims and axis is not None:
@@ -285,7 +287,7 @@ class Tensor:
         return out
     
     def exp(self):
-        out = Tensor(np.exp(self.data), requires_grad=self.requires_grad, children=(self,))
+        out = Tensor(np.exp(self.data, dtype=self.dtype), requires_grad=self.requires_grad, children=(self,))
         
         if self.requires_grad:
             def _backward():
@@ -295,7 +297,7 @@ class Tensor:
         return out
     
     def log(self):
-        out = Tensor(np.log(self.data + 1e-10,dtype=np.float32), requires_grad=self.requires_grad, children=(self,))  # 防止 log(0)
+        out = Tensor(np.log(self.data + 1e-10, dtype=self.dtype), requires_grad=self.requires_grad, children=(self,))  # 防止 log(0)
         
         if self.requires_grad:
             def _backward():
@@ -305,7 +307,7 @@ class Tensor:
         return out
     
     def abs(self):
-        out = Tensor(np.abs(self.data, dtype=np.float32), requires_grad=self.requires_grad, children=(self,))
+        out = Tensor(np.abs(self.data, dtype=self.dtype), requires_grad=self.requires_grad, children=(self,))
         if self.requires_grad:
             def _backward():
                 self.grad += np.sign(self.data) * out.grad
@@ -313,7 +315,14 @@ class Tensor:
         
         return out
 
-    def reshape(self, shape):
+    def reshape(self, shape, inplace=False):
+        '''重排数据，支持原地操作和新张量创建'''
+        if inplace:
+            Tensor._reshape_inplace(self, shape)
+        else:
+            return Tensor._reshape(self, shape)
+
+    def _reshape(self, shape):
         '''
         返回新的 Tensor，其数据是 reshape 之后的（重排原数据），梯度反向传播会 reshape 回原来的形状。
         '''
@@ -327,6 +336,24 @@ class Tensor:
             out._backward = _backward
         
         return out
+    
+    def _reshape_inplace(self, shape):
+        '''
+        原地重排数据，梯度反向传播会 reshape 回原来的形状。
+        '''
+        old_shape = self.shape
+        old_backward = self._backward
+        self.data = self.data.reshape(shape)
+        self.grad = self.grad.reshape(shape) if self.requires_grad else None
+
+        if self.requires_grad:
+            def _backward():   
+                # 把梯度 reshape 回原来的形状
+                self.grad = self.grad.reshape(old_shape)
+                self.data = self.data.reshape(old_shape)
+                if old_backward:
+                    old_backward()
+            self._backward = _backward
     
     def pad(self, pad_width: tuple[tuple[int, int], ...]):
         '''
@@ -382,42 +409,48 @@ class Tensor:
             out._backward = _backward
         
         return out
-        
-    def as_strided(self, shape, strides):
+    
+    def as_strided(self, shape, strides, inplace=False):
+        if inplace:
+            Tensor._as_strided_inplace(self, shape, strides)
+        else:
+            return Tensor._as_strided(self, shape, strides)
+
+    def _as_strided(self, shape, strides):
         '''创建视图'''
-        out_data = np.lib.stride_tricks.as_strided(self.data, shape=shape, strides=strides)
-        out = Tensor(out_data, requires_grad=self.requires_grad, children=(self,))
+        out = Tensor(np.lib.stride_tricks.as_strided(self.data, shape=shape, strides=strides), requires_grad=self.requires_grad, children=(self,))
 
         if self.requires_grad:
             grad_view = np.lib.stride_tricks.as_strided(self.grad, shape=shape, strides=strides)
             def _backward():
+                self.grad
                 np.add.at(grad_view, ..., out.grad)
+                self.grad
             out._backward = _backward
 
         return out
 
-    def as_strided_inplace(self, shape, strides):
+    def _as_strided_inplace(self, shape, strides):
         '''原地创建视图，不创建新结点，减少分配内存'''
 
         # 保存原本的 backward 方法（可能是 None 或已有计算图）
         old_backward = self._backward
         
-        data_raw = self.data
         grad_raw = self.grad
         # 修改 data 为视图
         self.data = np.lib.stride_tricks.as_strided(self.data, shape=shape, strides=strides)
         self.grad = np.lib.stride_tricks.as_strided(self.grad, shape=shape, strides=strides)
 
         if self.requires_grad:
-            def new_backward():
+            def _backward():
                 self.grad = grad_raw
-                old_backward()  # 保证之前的 backward 链仍然能走下去
+                if old_backward:
+                    old_backward()
 
-            self._backward = new_backward
+            self._backward = _backward
     
     def mean(self, axis=None, keepdims=False):
-        data = self.data.mean(axis=axis, keepdims=keepdims)
-        out = Tensor(data, requires_grad=self.requires_grad, children=(self,))
+        out = Tensor(self.data.mean(axis=axis, keepdims=keepdims, dtype=self.dtype), requires_grad=self.requires_grad, children=(self,))
 
         if self.requires_grad:
             axes = axis if isinstance(axis, tuple) else ((axis,) if axis is not None else None)
@@ -451,7 +484,7 @@ class Tensor:
 ###################################################
     
     def zero_grad(self):
-        self.grad = np.zeros_like(self.data, dtype=np.float32) if self.requires_grad else None
+        self.grad = np.zeros_like(self.data, dtype=self.dtype) if self.requires_grad else None
 
     def backward(self, remove_graph=True):
         ''' 反向传播 '''
@@ -493,23 +526,23 @@ class Tensor:
         #     node._children = set()
         #     node._backward = lambda: None
 
-    def zeros(shape, requires_grad=False):
+    def zeros(shape, requires_grad=False, dtype=np.float32):
         '''
         创建一个给定 shape 的零张量。
         '''
-        return Tensor(np.zeros(shape,dtype=np.float32), requires_grad=requires_grad)
+        return Tensor(np.zeros(shape, dtype=dtype), requires_grad=requires_grad)
 
-    def zeros_like(data):
+    def zeros_like(data, dtype=np.float32):
         '''返回一个全零张量，shape 保持一致，不参与反向传播'''
         if isinstance(data, Tensor):
             data = data.data
-        return Tensor(np.zeros_like(data,dtype=np.float32))
+        return Tensor(np.zeros_like(data, dtype=dtype))
     
-    def ones(shape, requires_grad=False):
+    def ones(shape, requires_grad=False, dtype=np.float32):
         '''
         创建一个给定 shape 的零张量。
         '''
-        return Tensor(np.ones(shape,dtype=np.float32), requires_grad=requires_grad)
+        return Tensor(np.ones(shape,dtype=dtype), requires_grad=requires_grad)
     
     def argmax(self, axis=None, keepdims=False):
         '''不参与求导计算'''
@@ -599,27 +632,34 @@ def abs(data):
     #     return out
 
 if __name__ == '__main__':
-    x = Tensor(np.arange(1 * 1 * 4 * 4).reshape(1, 1, 4, 4).astype(float), requires_grad=True)
+    # x = Tensor(np.arange(1 * 1 * 4 * 4).reshape(1, 1, 4, 4).astype(float), requires_grad=True)
 
-    # 提取 2x2 patch，滑动步长为1，目标是生成 (bs, ic, out_h, out_w, kh, kw)
-    bs, ic, h, w = x.shape
-    kh, kw = 2, 2
-    sh, sw = 1, 1
-    oh, ow = (h - kh)//sh + 1, (w - kw)//sw + 1
+    # # 提取 2x2 patch，滑动步长为1，目标是生成 (bs, ic, out_h, out_w, kh, kw)
+    # bs, ic, h, w = x.shape
+    # kh, kw = 2, 2
+    # sh, sw = 1, 1
+    # oh, ow = (h - kh)//sh + 1, (w - kw)//sw + 1
 
-    shape = (bs, ic, oh, ow, kh, kw)
-    strides = (
-        x.data.strides[0],  # bs
-        x.data.strides[1],  # ic
-        x.data.strides[2] * sh,  # 高方向滑动
-        x.data.strides[3] * sw,  # 宽方向滑动
-        x.data.strides[2],       # patch 高度
-        x.data.strides[3]        # patch 宽度
-    )
+    # shape = (bs, ic, oh, ow, kh, kw)
+    # strides = (
+    #     x.data.strides[0],  # bs
+    #     x.data.strides[1],  # ic
+    #     x.data.strides[2] * sh,  # 高方向滑动
+    #     x.data.strides[3] * sw,  # 宽方向滑动
+    #     x.data.strides[2],       # patch 高度
+    #     x.data.strides[3]        # patch 宽度
+    # )
 
-    y = x.as_strided(shape, strides)
-    z = y.sum()
-    z.backward()
+    # y = x.as_strided(shape, strides)
+    # z = y.sum()
+    # z.backward()
 
-    print("x.grad:")
-    print(x.grad)
+    # print("x.grad:")
+    # print(x.grad)
+
+    x = Tensor([[1, 1]], requires_grad=True)
+    y = x * 2
+    x.transpose((-1, -2), inplace=True)
+    y.sum()
+    y.backward()
+    print(x)

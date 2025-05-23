@@ -84,8 +84,8 @@ if __name__ == "__main__":
     )
 
     model.compile(
-        loss=CrossEntropyLoss(lambda2=0.1),
-        optimizer = Adam(lr=1e-4, decay_weight=0.999, min_lr=1e-6 ,beta1=0.9, beta2=0.999)
+        loss=CrossEntropyLoss(lambda2=0.01),
+        optimizer = Adam(lr=1e-4, decay_weight=0.996, min_lr=1e-6 ,beta1=0.9, beta2=0.999)
     )
 
     # 训练
