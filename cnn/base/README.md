@@ -80,25 +80,22 @@ class MyLayer(Layer):
 ### 2.1. 方法简介
 
 1. 构造函数 `__init__(lambda1=0, lambda2=0)`
-
 * 初始化正则化系数 `lambda1`（L1）和 `lambda2`（L2）。
 * 初始化内部属性 `_loss` 为 `None`，用于缓存前向传播结果以便后续反向传播。
+* 与 `PyTorch` 不同，正则化项放在 `loss` 模块中，更贴近理论计算时的操作
 
 ---
 
 2. 调用接口 `__call__(pred, true, params)`
-
 * 作为标准调用接口，自动调用 `forward(pred, true, params)`。
 * `pred` 是模型预测值，`true` 是真实标签，`params` 是模型所有参数，用于计算正则项。
 
 ---
 
 3. 前向传播 `forward(pred, true, params)`
-
 * 实际执行损失函数的前向传播并添加正则化项。
 * 自动将 `pred` 和 `true` 转换为 `Tensor` 类型（若尚未为 `Tensor`）。
 * 正则项计算如下：
-
   * **L2 正则化**：对所有启用正则的参数计算平方和；
   * **L1 正则化**：对所有启用正则的参数计算绝对值和。
 * 返回主损失值（未加正则项），但 `_loss` 内部保存的是含正则的总损失，用于反向传播。
@@ -106,14 +103,12 @@ class MyLayer(Layer):
 ---
 
 4. 抽象方法 `_forward(pred, true)`
-
 * 子类需实现该方法，用于定义具体的损失函数形式（如均方误差、交叉熵等）。
 * 不含正则项逻辑，仅处理核心损失值计算。
 
 ---
 
 5. 反向传播 `backward()`
-
 * 对 `_loss`（正则项 + 主损失）执行反向传播。
 * 要求 `_loss` 必须是一个标量 `Tensor`，否则抛出断言错误。
 * 每次调用后将 `_loss` 重置为 `None`，避免重复传播。
@@ -151,40 +146,38 @@ loss.backward()
 ### 3.1 方法简介
 
 1. 构造函数 `__init__()`
-
-* 占位初始化函数，无特殊逻辑。
+    * 初始化优化器，设置学习率 `lr`、最小学习率 `min_lr` 和学习率衰减权重 `decay_weight`。
+    * `lr`: 初始学习率，默认为 `1e-3`。
+    * `min_lr`: 最小学习率，默认为 `1e-8`。
+    * `decay_weight`: 学习率衰减权重，默认为 `0.999`。
 
 ---
 
 2. 调用接口 `__call__(params)`
-
-* 使优化器对象可像函数一样被调用，等价于执行 `step(params)`。
+    * 使优化器对象可像函数一样被调用，等价于执行 `step(params)`。
+    * `params`: 模型中所有 `Parameter` 组成的列表。
 
 ---
 
 3. 参数更新 `step(params)`
-
-* 调用 `_step(params)` 执行具体的优化策略。
-* `params` 为模型中所有 `Parameter` 组成的列表。
+    * 根据当前步数计算动态学习率，调用 `_step(params, lr)` 执行具体的优化策略。
+    * `params`: 模型中所有 `Parameter` 组成的列表。
 
 ---
 
-4. 抽象方法 `_step(params)`
-
-* 子类必须实现的核心优化逻辑。
-* 通常对每个参数根据其 `.grad` 执行更新。
+4. 抽象方法 `_step(params, lr)`
+    * 子类必须实现的核心优化逻辑。
+    * `params`: 模型中所有 `Parameter` 组成的列表。
+    * `lr`: 当前学习率。
 
 ---
 
 ### 3.2 使用说明
-
 自定义优化器时应继承 `Optimizer` 类并实现 `_step` 方法。例如：
-
 ```python
 class SGD(Optimizer):
     def __init__(self, lr=0.001, min_lr=1e-8, decay_weight=0.99):
         super().__init__(lr, min_lr, decay_weight)
-
     def _step(self, params: list[Parameter], lr):
         for param in params:
             delta_grad = lr * param.grad
@@ -194,10 +187,8 @@ class SGD(Optimizer):
 调用方式如下：
 
 ```python
-opt = SGD(lr=0.01)
+opt = SGD(lr=1e-4, decay_weight=0.999, min_lr=1e-7)
 opt(model.parameters())
 ```
 
 该设计统一了调用接口，便于灵活扩展不同类型的优化器。
-
-

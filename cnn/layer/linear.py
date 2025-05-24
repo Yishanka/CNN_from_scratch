@@ -28,5 +28,6 @@ class Linear(Layer):
             x = Tensor(x)
 
         # 未完成维度检查，可补充
-        out = x @ self._weight + self._bias
-        return out
+        x = x @ self._weight + self._bias
+        # x += self._bias
+        return x

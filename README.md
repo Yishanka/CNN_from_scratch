@@ -24,7 +24,7 @@
 | 模块名 | 说明 |
 |--------|------|
 | `layer/` | 神经网络层模块，如 `Linear`, `Conv2d` 等，继承自 `Layer` |
-<!-- | `activation/` | 神经网络激活层模块，如 `ReLU`, `SoftMax` 等，继承自 `Layer` | -->
+| `activation/` | 神经网络激活层模块，如 `ReLU`, `SoftMax` 等，继承自 `Layer` |
 | `loss/` | 损失函数模块，如 `CrossEntropyLoss`，继承自 `Loss` |
 | `optimizer/` | 优化器模块，如 `Adam`，继承自 `Optimizer` |
 | `data/` | 数据处理模块，负责数据加载、预处理等 |
@@ -58,52 +58,63 @@
 ---
 
 ## 使用示例
-### 两种模型初始化方法
+```python
+import numpy as np
+import matplotlib.pyplot as plt
 
-#### 动态初始化模型
-```python
 import cnn
-from cnn.layer import Layer
-class SimpleCNN(cnn.Model)
-  def __init__(self):
-      super().__init__()
-      self.layer1 = Layer(...)
-      self.layer2 = Layer(...)
-      self.
-model = SimpleCNN()
-```
-#### 静态初始化
-```python
-import cnn
-from cnn.layer import Layer
-layer1 = Layer(...)
-layer2 = Layer(...)
-...
-model = cnn.Model(layer1, layer2, ...)
-```
+from cnn.core import Tensor
+from cnn.layer import Linear, ReLU, Conv2d, Flatten, MaxPool2d, Softmax, BatchNorm2d
+from cnn.optimizer import Adam
+from cnn.loss import CrossEntropyLoss
 
-#### 实际实现时，模型初始化用第一种方法，并sequential兼容第二种方法
-```python
-import cnn
-from cnn.layer import Layer
-layer1 = Layer(...)
-layer2 = Layer(...)
-...
 model = cnn.Model()
-model.sequential(layer1, layer2, ...)
-```
-### 模型预测和训练过程
-#### 自己定义，灵活性高
-```python
-# 假设 x, true 为训练数据
-pred = model.forward(x)
-loss = model.compute_loss(pred, true)
-model.backward()
-model.step()
-model.zero_grad()
-```
+model.sequential(
+    Conv2d(in_channels=1, out_channels=16, kernel_size=3, stride=1, padding=1),
+    BatchNorm2d(channels=16),
+    ReLU(),
+    MaxPool2d(kernel_size=2),
 
-#### 用集成的fit方法
+    Conv2d(in_channels=16, out_channels=64, kernel_size=3, stride=1, padding=1),
+    BatchNorm2d(channels=64),
+    ReLU(),
+    MaxPool2d(kernel_size=2),
+
+    Flatten(),
+
+    Linear(in_features=64*7*7, out_features=128),
+    ReLU(),
+    Linear(in_features=128, out_features=10),
+    Softmax()
+)
+
+model.compile(
+    loss=CrossEntropyLoss(lambda2=0.02),
+    optimizer = Adam(lr=1e-4, decay_weight=0.999, min_lr=1e-7 ,beta1=0.9, beta2=0.999)
+)
+
+# 训练
+for epoch in range(5):
+    model.train() # 必须执行，保证参数参与计算图构建
+    for batch_idx, (X, y) in enumerate(train_loader):
+        pred = model.forward(X) 
+        loss = model.loss(pred, y)
+        model.backward(remove_graph=True)
+        model.step()
+        model.zero_grad()
+
+# 训练集上测试
+model.eval() # 必须执行，保证参数不参与计算图构建
+for X, y in train_loader:
+    pred = model.forward(X)
+    loss = model.loss(pred, y)
+
+# 测试集上测试
+for X, y in test_loader:
+    pred = model.forward(X)
+    loss = model.loss(pred, y)
+```
+可根据需求，自定义指标计算等，暂不集成到框架中
 
 ---
 
@@ -124,28 +135,5 @@ model.zero_grad()
         - eg: y = \[[0], [1], [2]]: batch_size = 3（列向量）
     - y (classification): (batch_size)
         - eg: y = [0, 1, 2]: batch_size = 3（行向量）
-        - *暂时未实现独热编码，后续实现后可能需要修改*
 2. 层接受输入的维度需符合上述要求，参数和计算的设计要保证输出维度也需符合上述要求
-3. 私有属性和方法在变量名前加单下划线 (_)，尽量不要让派生类获取父类的私有属性
-
-## 附录：计算速度优化方法
-1. 反向传播时先对计算图剪枝：
-    - 删除所有不需要求导的结点
-    - 原因：不需要求导的结点的子结点也不需要求导，则该子图上所有结点都不需要求导
-
-2. 设置模型 `train`/`eval` 模式选择
-    - 在验证/测试时避免反复构建+删除计算图
-
-3. `__getitem__ ` 不再创建临时变量 `grad`，避免临时分配内存，性能大幅优化
-
-4. `as_strided` 不重新分配内存，加快 `im2col` 操作
-
-5. 原地操作的使用，减少结点创建
-    - 使用时要保证单向数据流，不能有右值继续计算的情况
-    - 没有反向传播时（测试），模型参数即其他永久变量的视图被永久修改，计算错误，待解决
-
-6. 反向传播临时变量预计算：将与父结点传回梯度无关的计算和变量放在 `_backward` 函数体外，避免重复计算
-
-7. `np.add` 原地计算，尽量避免临时内存创建
-
-8. 使用 `einsum` 替代手动降维，更高效且易读
+3. 尽量不要让派生类获取父类的私有属性

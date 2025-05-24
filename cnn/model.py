@@ -16,9 +16,7 @@ class Model:
 
     @property
     def parameters(self):
-        '''
-        属性方法，返回层中的所有参数
-        '''
+        '''属性方法，返回层中的所有参数'''
         params: list[Parameter] = []
         for layer in self._layers:
             params.extend(layer.parameters)
@@ -39,26 +37,22 @@ class Model:
         object.__setattr__(self, name, value)
     
     def sequential(self, *layers):
-        '''
-        初始化或增加新的layers
-        '''
+        '''初始化或增加新的layers'''
         layers = list(layers)
         for layer in layers:
             self._layers.append(layer)
 
     def compile(self, loss: Loss, optimizer: Optimizer):
-        '''
-        初始化或增加新的优化器与损失
-        '''
+        '''初始化或增加新的优化器与损失'''
         self._loss_fn = loss
         self._optimizer = optimizer
     
     def forward(self, x) -> Tensor:
         '''
         执行前向传播，依次通过模型中所有层。
-        参数:
+        Parameters:
             x : 输入，可以是 numpy 数组，也可以是张量
-        返回:
+        Returns:
             Tensor: 模型预测输出
         '''
         for layer in self._layers:
@@ -68,49 +62,37 @@ class Model:
     def loss(self, pred, true) -> Tensor:
         '''
         计算损失函数
-        参数:
+        Parameters:
             pred: 模型预测值
             true: 真实标签
-        返回:
+        Returns:
             Tensor: 损失值
         '''
         return self._loss_fn(pred, true, self.parameters)
 
     def backward(self, remove_graph=True):
-        '''
-        通过保存的 loss 执行反向传播
-        '''
+        '''通过保存的 loss 执行反向传播'''
         self._loss_fn.backward(remove_graph)
 
     def step(self):
-        '''
-        使用优化器更新所有参数
-        '''
+        '''使用优化器更新所有参数'''
         self._optimizer(self.parameters)
 
     def zero_grad(self):
-        '''
-        将所有参数的梯度清零
-        '''
+        '''将所有参数的梯度清零'''
         for layer in self._layers:
             layer.zero_grad()
 
-    def fit(self, epoch):
-        '''
-        继承模型训练方法
-        '''
-        pass
+    # def fit(self, epoch):
+    #     '''继承模型训练方法'''
+    #     pass
 
     def train(self):
-        '''
-        设置模型为训练模式
-        '''
+        '''设置模型为训练模式'''
         for layer in self._layers:
             layer.train()
     
     def eval(self):
-        '''
-        设置模型为测试模式
-        '''
+        '''设置模型为测试模式'''
         for layer in self._layers:
             layer.eval()

@@ -7,7 +7,7 @@ from cnn.layer import Linear, ReLU, Conv2d, Flatten, MaxPool2d, Softmax, BatchNo
 from cnn.optimizer import Adam, SGD
 from cnn.loss import CrossEntropyLoss
 from cnn.data import FashionMNIST, DataLoader
-import time
+
 
 # ==== 评估指标函数 ====
 def compute_metrics(pred, true):
@@ -102,7 +102,6 @@ if __name__ == "__main__":
     for epoch in range(5):
         model.train() # 必须执行，保证参数参与计算图构建
         for batch_idx, (X, y) in enumerate(train_loader):
-            start = time.time()
             pred = model.forward(X) 
             loss = model.loss(pred, y)
             model.backward(remove_graph=True)

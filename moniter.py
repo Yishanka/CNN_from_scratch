@@ -1,57 +1,106 @@
-import numpy as np
 import matplotlib.pyplot as plt
-
-import cnn
-from cnn.core import Tensor
-from cnn.layer import Linear, ReLU, Conv2d, Flatten, MaxPool2d, Softmax, BatchNorm2d
-from cnn.optimizer import Adam, SGD
-from cnn.loss import CrossEntropyLoss
-from cnn.data import FashionMNIST, DataLoader
 import time
+import threading
+import keyboard 
+from cnn.core import Tensor
 
-# ==== 评估指标函数 ====
-def compute_metrics(pred, true):
-    pred_labels = np.argmax(pred, axis=1)
-    true_labels = np.argmax(true, axis=1)
-    pred_np = pred_labels
-    true_np = true_labels
+class LossMonitor:
+    def __init__(self, stop_key: str):
+        self.losses = [] 
+        self.is_training = True  # 控制是否继续训练
+        self.stop_key = stop_key  # 停止训练的按键
 
-    tp = np.sum((pred_np == 1) & (true_np == 1))
-    fp = np.sum((pred_np == 1) & (true_np == 0))
-    fn = np.sum((pred_np == 0) & (true_np == 1))
-    accuracy = np.mean(pred_np == true_np)
-    precision = tp / (tp + fp) if (tp + fp) > 0 else 0
-    recall = tp / (tp + fn) if (tp + fn) > 0 else 0
-    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
+        # 初始化画布
+        self.fig, self.ax = plt.subplots(figsize=(8, 5))
+        plt.ion()  # 开启交互模式
 
-    return accuracy, precision, recall, f1
+        # 启动键盘检测线程
+        stop_thread = threading.Thread(target=self.check_stop_key)
+        stop_thread.daemon = True
+        stop_thread.start()
 
-def compute_multiclass_metrics(pred: Tensor, true: Tensor, num_classes=10):
-    pred_labels = np.argmax(pred, axis=1)
-    true_labels = np.argmax(true, axis=1)
+    def append_loss(self, loss: Tensor):
+        '''添加损失值'''
+        loss = loss if isinstance(loss, Tensor) else Tensor(loss)
+        self.losses.append(loss.data)
 
-    precision_list = []
-    recall_list = []
-    f1_list = []
+    def update_plots(self):
+        '''更新图表'''
+        self.ax.clear()
+        self.ax.plot(self.losses, label="Loss", color="blue")
+        self.ax.set_title("Training Loss")
+        self.ax.set_xlabel("Iterations")
+        self.ax.set_ylabel("Loss")
+        self.ax.legend()
+        plt.pause(0.1)
 
-    for cls in range(num_classes):
-        tp = np.sum((pred_labels == cls) & (true_labels == cls))
-        fp = np.sum((pred_labels == cls) & (true_labels != cls))
-        fn = np.sum((pred_labels != cls) & (true_labels == cls))
+    def check_stop_key(self):
+        '''检测按键以停止训练'''
+        while self.is_training:
+            if keyboard.is_pressed(self.stop_key):
+                self.stop_training()
+                print("Training stopped by user.")
+                time.sleep(2)
+            time.sleep(0.1) # 每 0.1 检测一次
 
+    def stop_training(self):
+        '''停止训练'''
+        self.is_training = False
+
+
+if __name__ == '__main__':
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    import cnn
+    from cnn.core import Tensor
+    from cnn.layer import Linear, ReLU, Conv2d, Flatten, MaxPool2d, Softmax, BatchNorm2d
+    from cnn.optimizer import Adam, SGD
+    from cnn.loss import CrossEntropyLoss
+    from cnn.data import FashionMNIST, DataLoader
+    from moniter import LossMonitor
+    import time
+
+    # ==== 评估指标函数 ====
+    def compute_metrics(pred, true):
+        pred_labels = np.argmax(pred, axis=1)
+        true_labels = np.argmax(true, axis=1)
+        pred_np = pred_labels
+        true_np = true_labels
+
+        tp = np.sum((pred_np == 1) & (true_np == 1))
+        fp = np.sum((pred_np == 1) & (true_np == 0))
+        fn = np.sum((pred_np == 0) & (true_np == 1))
+        accuracy = np.mean(pred_np == true_np)
         precision = tp / (tp + fp) if (tp + fp) > 0 else 0
         recall = tp / (tp + fn) if (tp + fn) > 0 else 0
         f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
 
-        precision_list.append(precision)
-        recall_list.append(recall)
-        f1_list.append(f1)
+        return accuracy, precision, recall, f1
 
-    accuracy = np.mean(pred_labels == true_labels)
-    return accuracy, np.mean(precision_list), np.mean(recall_list), np.mean(f1_list)
+    def compute_multiclass_metrics(pred: Tensor, true: Tensor, num_classes=10):
+        pred_labels = np.argmax(pred, axis=1)
+        true_labels = np.argmax(true, axis=1)
 
-# ==== 主程序 ====
-if __name__ == "__main__":
+        precision_list = []
+        recall_list = []
+        f1_list = []
+
+        for cls in range(num_classes):
+            tp = np.sum((pred_labels == cls) & (true_labels == cls))
+            fp = np.sum((pred_labels == cls) & (true_labels != cls))
+            fn = np.sum((pred_labels != cls) & (true_labels == cls))
+
+            precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+            recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+            f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
+
+            precision_list.append(precision)
+            recall_list.append(recall)
+            f1_list.append(f1)
+
+        accuracy = np.mean(pred_labels == true_labels)
+        return accuracy, np.mean(precision_list), np.mean(recall_list), np.mean(f1_list)
 
     # 数据
     train_dataset = FashionMNIST(root='./data', train=True)
@@ -91,7 +140,7 @@ if __name__ == "__main__":
     # 训练
     # loss moniter 可以暂时开启，计算速度已经够高
     STOP_KEY = 'space'
-    loss_monitor = cnn.LossMonitor(STOP_KEY)
+    loss_monitor = LossMonitor(STOP_KEY)
 
     metrics = {
         "train_accuracy": [],
@@ -120,11 +169,11 @@ if __name__ == "__main__":
             model.zero_grad()
             if (batch_idx % 10 == 9):
                 round_time = time.time() - start
-                print(f'one round: {round_time}')
+                print(round_time)
             
             
-            loss_monitor.append_loss(loss=loss)
-            loss_monitor.update_plots()
+            # loss_monitor.append_loss(loss=loss)
+            # loss_monitor.update_plots()
 
         model.eval() # 必须执行，保证参数正确不参与计算图构建
         # 记录训练和测试的预测结果

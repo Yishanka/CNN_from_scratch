@@ -12,13 +12,12 @@ class Softmax(Layer):
         out = exp / exp.sum(axis=1, keepdims=True)
         return out
     
-
 class ReLU(Layer):
     def __init__(self):
         super().__init__()
 
     def _forward(self, x:Tensor)->Tensor:
-        out = Tensor.maximum(x, 0)
+        out = x.maximum(x)
         return out
     
 class LeakyReLU(Layer):
@@ -26,6 +25,6 @@ class LeakyReLU(Layer):
         super().__init__()
 
     def _forward(self, x:Tensor)->Tensor:
-        out = Tensor.maximum(x, 0.01*x)
+        out = x.maximum(0.01*x)
         return out
     
