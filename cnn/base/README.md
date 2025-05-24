@@ -176,8 +176,8 @@ loss.backward()
 自定义优化器时应继承 `Optimizer` 类并实现 `_step` 方法。例如：
 ```python
 class SGD(Optimizer):
-    def __init__(self, lr=0.001, min_lr=1e-8, decay_weight=0.99):
-        super().__init__(lr, min_lr, decay_weight)
+    def __init__(self, lr=0.001, min_lr=1e-8, lr_decay=0.99):
+        super().__init__(lr, min_lr, lr_decay)
     def _step(self, params: list[Parameter], lr):
         for param in params:
             delta_grad = lr * param.grad
@@ -187,7 +187,7 @@ class SGD(Optimizer):
 调用方式如下：
 
 ```python
-opt = SGD(lr=1e-4, decay_weight=0.999, min_lr=1e-7)
+opt = SGD(lr=1e-4, lr_decay=0.999, min_lr=1e-7)
 opt(model.parameters())
 ```
 

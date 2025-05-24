@@ -45,8 +45,7 @@ class BatchNorm2d(Layer):
         batch_size, channels, height, width = x.shape
         
         # 重塑数据以便于计算统计量: (bs, c, h, w) -> (bs*h*w, c)
-        x.transpose((0, 2, 3, 1), inplace=True)
-        x_reshaped = x.reshape((-1, channels))
+        x_reshaped = x.transpose((0, 2, 3, 1)).reshape((-1, channels))
         
         if self.training:
             # 计算批量均值和方差
@@ -68,6 +67,5 @@ class BatchNorm2d(Layer):
         out = x_norm * self.gamma + self.beta
         
         # 重塑回原始形状: (N*H*W, C) -> (N, C, H, W)
-        out = out.reshape((batch_size, height, width, channels))
-        out.transpose((0, 3, 1, 2), inplace=True)
+        out = out.reshape((batch_size, height, width, channels)).transpose((0, 3, 1, 2))
         return out

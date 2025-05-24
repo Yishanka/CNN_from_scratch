@@ -114,27 +114,27 @@ if __name__ == '__main__':
     # 模型
     model = cnn.Model()
     model.sequential(
-        Conv2d(in_channels=1, out_channels=10, kernel_size=3, stride=1, padding=1),
-        BatchNorm2d(channels=10),
+        Conv2d(in_channels=1, out_channels=16, kernel_size=3, stride=1, padding=1),
+        BatchNorm2d(channels=16),
         ReLU(),
         MaxPool2d(kernel_size=2),
 
-        Conv2d(in_channels=10, out_channels=40, kernel_size=3, stride=1, padding=1),
-        BatchNorm2d(channels=40),
+        Conv2d(in_channels=16, out_channels=64, kernel_size=3, stride=1, padding=1),
+        BatchNorm2d(channels=64),
         ReLU(),
         MaxPool2d(kernel_size=2),
 
         Flatten(),
 
-        Linear(in_features=40*7*7, out_features=128),
+        Linear(in_features=64*7*7, out_features=128),
         ReLU(),
         Linear(in_features=128, out_features=10),
         Softmax()
     )
 
     model.compile(
-        loss=CrossEntropyLoss(lambda2=0.01),
-        optimizer = Adam(lr=1e-4, decay_weight=0.996, min_lr=1e-6 ,beta1=0.9, beta2=0.999)
+        loss=CrossEntropyLoss(lambda2=0.02),
+        optimizer = Adam(lr=1e-4, decay_weight=0.999, min_lr=1e-7 ,beta1=0.9, beta2=0.999)
     )
 
     # 训练
@@ -167,13 +167,9 @@ if __name__ == '__main__':
             model.backward(remove_graph=True)
             model.step()
             model.zero_grad()
-            if (batch_idx % 10 == 9):
-                round_time = time.time() - start
-                print(round_time)
             
-            
-            # loss_monitor.append_loss(loss=loss)
-            # loss_monitor.update_plots()
+            loss_monitor.append_loss(loss=loss)
+            loss_monitor.update_plots()
 
         model.eval() # 必须执行，保证参数正确不参与计算图构建
         # 记录训练和测试的预测结果

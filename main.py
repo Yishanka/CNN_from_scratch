@@ -60,7 +60,7 @@ if __name__ == "__main__":
 
     test_dataset = FashionMNIST(root='./data', train=False)
     test_dataset.to_one_hot()
-    test_loader = DataLoader(test_dataset.get_data(), batch_size=64, shuffle=False)
+    test_loader = DataLoader(test_dataset.get_data(), batch_size=1000, shuffle=False)
 
     # 模型
     model = cnn.Model()
@@ -84,8 +84,8 @@ if __name__ == "__main__":
     )
 
     model.compile(
-        loss=CrossEntropyLoss(lambda2=0.02),
-        optimizer = Adam(lr=1e-4, decay_weight=0.999, min_lr=1e-7 ,beta1=0.9, beta2=0.999)
+        loss=CrossEntropyLoss(lambda2=0.05),
+        optimizer = Adam(lr=1e-4, decay_weight=1, beta1=0.9, beta2=0.999)
     )
 
     # 训练

@@ -115,6 +115,7 @@ for X, y in test_loader:
     loss = model.loss(pred, y)
 ```
 可根据需求，自定义指标计算等，暂不集成到框架中
+完整的代码可参考 `main.py`
 
 ---
 
