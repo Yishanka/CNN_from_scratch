@@ -134,7 +134,7 @@ if __name__ == '__main__':
 
     model.compile(
         loss=CrossEntropyLoss(lambda2=0.02),
-        optimizer = Adam(lr=1e-4, decay_weight=0.999, min_lr=1e-7 ,beta1=0.9, beta2=0.999)
+        optimizer = Adam(lr=1e-4,beta1=0.9, beta2=0.999)
     )
 
     # 训练
@@ -167,7 +167,9 @@ if __name__ == '__main__':
             model.backward(remove_graph=True)
             model.step()
             model.zero_grad()
-            
+            if (batch_idx % 10 == 9):
+                end = time.time()
+                print(end-start)
             loss_monitor.append_loss(loss=loss)
             loss_monitor.update_plots()
 

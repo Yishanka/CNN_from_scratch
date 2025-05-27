@@ -90,13 +90,13 @@ model.sequential(
 
 model.compile(
     loss=CrossEntropyLoss(lambda2=0.02),
-    optimizer = Adam(lr=1e-4, decay_weight=0.999, min_lr=1e-7 ,beta1=0.9, beta2=0.999)
+    optimizer = Adam(lr=1e-4, beta1=0.9, beta2=0.999)
 )
 
 # 训练
 for epoch in range(5):
     model.train() # 必须执行，保证参数参与计算图构建
-    for batch_idx, (X, y) in enumerate(train_loader):
+    for (X, y) in enumerate(train_loader):
         pred = model.forward(X) 
         loss = model.loss(pred, y)
         model.backward(remove_graph=True)

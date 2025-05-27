@@ -17,7 +17,7 @@ class ReLU(Layer):
         super().__init__()
 
     def _forward(self, x:Tensor)->Tensor:
-        out = x.maximum(x)
+        out = x.maximum(0)
         return out
     
 class LeakyReLU(Layer):

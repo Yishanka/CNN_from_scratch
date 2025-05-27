@@ -1,7 +1,7 @@
 from cnn.core import Parameter
 
 class Optimizer:
-    def __init__(self, lr=1e-3, min_lr = 1e-8, lr_decay = 0.999):
+    def __init__(self, lr=1e-3, min_lr = 1e-8, lr_decay = 1.0):
         '''
         Optimizer 基类
         '''

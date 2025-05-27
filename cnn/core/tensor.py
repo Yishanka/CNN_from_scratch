@@ -1,7 +1,5 @@
 import numpy as np
 from numpy.lib.stride_tricks import as_strided
-# todo: 需要为每个方法加上一个判断其结果是否需要参与到反向传播的过程中，构建计算图时忽略这个 Tensor
-# todo: 将前向传播中调用的 broadcast 修改为反向传播中的 unbroadcast，减少计算图深度
 class Tensor:
     '''
     Tensor 类，用于表示多维数组，并支持自动求导。
@@ -204,7 +202,7 @@ class Tensor:
    
     def __matmul__(self, other):
         other = other if isinstance(other, Tensor) else Tensor(other)
-        out = Tensor(np.matmul(self.data, other.data), requires_grad=self.requires_grad or other.requires_grad,children=(self, other), op='@')
+        out = Tensor(np.matmul(self.data, other.data), requires_grad=self.requires_grad or other.requires_grad, children=(self, other), op='@')
 
         if out.requires_grad:
             # 预计算转置维度（避免重复计算）
@@ -298,11 +296,47 @@ class Tensor:
 
         return out
 
-    def var(self, axis=None, keepdims=False):
-        mean = self.mean(axis=axis, keepdims=True)
-        centered = self - mean
+    def var(self, axis=None, keepdims=False, ddof=1):
+        # 1. 直接计算均值（不创建Tensor节点）
+        mean_data = np.mean(self.data, axis=axis, keepdims=True)
+        
+        # 2. 计算平方差和
+        centered = self.data - mean_data
         squared = centered * centered
-        return squared.mean(axis=axis, keepdims=keepdims)
+        sum_squared = np.sum(squared, axis=axis, keepdims=keepdims)
+        
+        # 3. 计算除数（考虑ddof）
+        if axis is None:
+            n = self.data.size
+        else:
+            n = np.prod([self.data.shape[ax] for ax in (axis if isinstance(axis, tuple) else (axis,))])
+        out_data = sum_squared / (n - ddof)
+        
+        # 4. 构建输出Tensor
+        out = Tensor(out_data, requires_grad=self.requires_grad, children=(self,), op='var')
+
+        if self.requires_grad:
+            def _backward():
+                grad = out.grad
+                
+                # 处理keepdims广播
+                if not keepdims and axis is not None:
+                    shape = list(out.data.shape)
+                    for ax in sorted(axis if isinstance(axis, tuple) else (axis,)):
+                        shape.insert(ax, 1)
+                    grad = grad.reshape(shape)
+                
+                # 方差的反向传播公式: d(var)/dx = 2*(x - mean)/(n - ddof)
+                scale = 2.0 / (n - ddof)
+                grad = grad * scale * (self.data - mean_data)
+                
+                # 累加梯度
+                np.add(self.grad, grad, out=self.grad, where=np.ones_like(self.data, dtype=bool))
+
+            out._backward = _backward
+
+        return out
+     
 
     def maximum(self, other):
         '''求出两个 Tensor 之间的最大值'''
@@ -605,12 +639,4 @@ def abs(data):
     return data.abs()
 
 if __name__ == '__main__':
-
-    a = Tensor([1, 1], requires_grad=True)
-    b = Tensor([1, 1], requires_grad=True)
-    a = a*2
-    a += b
-    a += a
-    a.sum()
-    a.backward()
-    print(a)
+    pass

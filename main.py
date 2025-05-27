@@ -84,8 +84,8 @@ if __name__ == "__main__":
     )
 
     model.compile(
-        loss=CrossEntropyLoss(lambda2=0.05),
-        optimizer = Adam(lr=1e-4, decay_weight=1, beta1=0.9, beta2=0.999)
+        loss=CrossEntropyLoss(lambda2=0.000),
+        optimizer = Adam(lr=1e-4, beta1=0.9, beta2=0.999)
     )
 
     # 训练
@@ -99,7 +99,7 @@ if __name__ == "__main__":
         "f1": []
     }
 
-    for epoch in range(5):
+    for epoch in range(10):
         model.train() # 必须执行，保证参数参与计算图构建
         for batch_idx, (X, y) in enumerate(train_loader):
             pred = model.forward(X) 
