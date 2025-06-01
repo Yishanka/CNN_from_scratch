@@ -4,11 +4,8 @@ import gzip
 import os
 import struct
 from cnn.core import Tensor
-
-np.random.seed(42)
-
 class DataLoader:
-    def __init__(self, dataset, batch_size=32, shuffle=True):
+    def __init__(self, dataset, batch_size=32, shuffle=True, seed=42):
         """
         数据加载器
         
@@ -17,6 +14,8 @@ class DataLoader:
             batch_size: 批量大小，默认32
             shuffle: 是否在每个epoch开始时打乱数据，默认True
         """
+        if seed:
+            np.random.seed(seed=seed)
         self.dataset = dataset
         self.batch_size = batch_size
         self.shuffle = shuffle

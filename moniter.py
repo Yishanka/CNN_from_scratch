@@ -152,6 +152,7 @@ if __name__ == '__main__':
         "f1": []
     }
 
+    print('训练开始，按空格停止训练')
     for epoch in range(5):
         if not loss_monitor.is_training:
             break
@@ -160,16 +161,12 @@ if __name__ == '__main__':
         for batch_idx, (X, y) in enumerate(train_loader):
             if not loss_monitor.is_training:
                 break
-            if (batch_idx % 10 == 0):
-                start = time.time()
             pred = model.forward(X) 
             loss = model.loss(pred, y)
             model.backward(remove_graph=True)
             model.step()
             model.zero_grad()
-            if (batch_idx % 10 == 9):
-                end = time.time()
-                print(end-start)
+
             loss_monitor.append_loss(loss=loss)
             loss_monitor.update_plots()
 

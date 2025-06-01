@@ -114,8 +114,13 @@ for X, y in test_loader:
     pred = model.forward(X)
     loss = model.loss(pred, y)
 ```
-可根据需求，自定义指标计算等，暂不集成到框架中
-完整的代码可参考 `main.py`
+可根据需求，自定义指标计算等，暂不集成到框架中。
+
+完整的代码可参考 `main.py`，直接运行可以对 `FashionMNIST` 数据集做分类，在给定神经网络框架下一轮大约需要 7 分钟。
+
+启动 `monitor.py`，可以看到分类器在 `FashionMNIST` 一轮训练种损失下降的曲线。
+
+可以通过其他 dataloader 加载其他数据集进行学习与分类。
 
 ---
 

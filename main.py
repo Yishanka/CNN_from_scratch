@@ -1,3 +1,5 @@
+from tqdm import tqdm
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -56,11 +58,11 @@ if __name__ == "__main__":
     # 数据
     train_dataset = FashionMNIST(root='./data', train=True)
     train_dataset.to_one_hot()
-    train_loader = DataLoader(train_dataset.get_data(), batch_size=64, shuffle=True)
+    train_loader = DataLoader(train_dataset.get_data(), batch_size=64, shuffle=True, seed=42)
 
     test_dataset = FashionMNIST(root='./data', train=False)
     test_dataset.to_one_hot()
-    test_loader = DataLoader(test_dataset.get_data(), batch_size=1000, shuffle=False)
+    test_loader = DataLoader(test_dataset.get_data(), batch_size=1000, shuffle=False, seed=42)
 
     # 模型
     model = cnn.Model()
@@ -98,15 +100,21 @@ if __name__ == "__main__":
         "recall": [],
         "f1": []
     }
-
+    
     for epoch in range(10):
-        model.train() # 必须执行，保证参数参与计算图构建
-        for batch_idx, (X, y) in enumerate(train_loader):
+        model.train()
+        print(f"\nEpoch {epoch + 1}/{10}")
+        train_iterator = tqdm(enumerate(train_loader), total=len(train_loader), desc="Training", ncols=100)
+
+        for batch_idx, (X, y) in train_iterator:
             pred = model.forward(X) 
             loss = model.loss(pred, y)
             model.backward(remove_graph=True)
             model.step()
             model.zero_grad()
+
+            # 显示当前 batch loss
+            train_iterator.set_postfix({"Batch Loss": loss.data})
 
         model.eval() # 必须执行，保证参数正确不参与计算图构建
         # 记录训练和测试的预测结果
