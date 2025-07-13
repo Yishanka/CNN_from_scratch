@@ -4,7 +4,7 @@ class Tensor:
     '''
     Tensor 类，用于表示多维数组，并支持自动求导。
     '''
-    def __init__(self, data, requires_grad:bool=False, children=(), op: str=None, dtype=np.float32):
+    def __init__(self, data, requires_grad:bool=False, children=(), op: str='', dtype=np.float32):
         '''
         Parameters:
             data: 数据，转换为 numpy 数组
@@ -79,7 +79,7 @@ class Tensor:
         
         if self.requires_grad:
             def _backward():
-                np.add(self.grad, out.grad.T, out=self.grad)  
+                self.grad += out.grad.T
             out._backward = _backward
         
         return out
